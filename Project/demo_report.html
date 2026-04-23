@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Industrial Automation — Live System Evidence Report</title>
+<style>
+  :root {
+    --bg:      #1a1a2e;
+    --card-bg: #16213e;
+    --accent:  #0f3460;
+    --border:  #0f3460;
+    --text:    #e0e0e0;
+    --muted:   #888;
+    --blue:    #4fc3f7;
+    --green:   #00c853;
+    --amber:   #ff8f00;
+    --red:     #ef5350;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 32px;
+  }
+  h1 { font-size: 22px; color: var(--blue); margin-bottom: 4px; }
+  h2 { font-size: 16px; color: var(--blue); margin: 28px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { font-size: 14px; color: #b0c4de; margin-bottom: 10px; }
+  .meta { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+  .cards { display: flex; gap: 20px; flex-wrap: wrap; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 22px;
+    flex: 1; min-width: 280px;
+  }
+  .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .info-table td { padding: 4px 8px; border-bottom: 1px solid #1f2d4a; }
+  .info-table td:first-child { color: var(--muted); width: 55%; }
+  .alert-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .alert-table th {
+    background: var(--accent); color: var(--blue);
+    padding: 7px 10px; text-align: left; font-weight: 600;
+  }
+  .alert-table td { padding: 5px 10px; border-bottom: 1px solid #1f2d4a; }
+  .sparklines { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+  .sparkline-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .json-block {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    color: #a8d8a8; overflow-x: auto;
+    max-height: 400px; overflow-y: auto;
+    margin-top: 6px;
+    white-space: pre;
+  }
+  .count-badge {
+    display: inline-block;
+    background: var(--accent); color: var(--blue);
+    border-radius: 12px; padding: 2px 12px;
+    font-size: 12px; font-weight: bold;
+    margin-bottom: 10px;
+  }
+  footer { margin-top: 48px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--border); padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Section 1: Header                                       -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<h1>Smart Industrial Automation — Live System Evidence Report</h1>
+<div class="meta">
+  Generated: 2026-04-23T02:20:26 &nbsp;|&nbsp;
+  Gateway uptime since: 2026-04-23T02:20:12 &nbsp;|&nbsp;
+  API base: http://localhost:5000
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Section 2: System Status Panel                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>System Status (from /api/status)</h2>
+<div class="cards">
+  
+<div class="card">
+  <h3>Motor 1 — Three-Phase Induction Motor</h3>
+  <p>Status: <span style="background:#e8f5e9; color:#00c853; border:1px solid #00c853; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">NORMAL</span></p>
+  <table class="info-table">
+    <tr><td>Temperature</td><td><b>64.42 °C</b></td></tr>
+    <tr><td>Vibration X</td><td><b>0.0485 g</b></td></tr>
+    <tr><td>Speed (RPM)</td><td><b>1480.2</b></td></tr>
+    <tr><td>Fault Name</td><td><b>NORMAL</b></td></tr>
+    <tr><td>Anomaly Score</td><td><b>+0.032102</b></td></tr>
+    <tr><td>Frames Received</td><td><b>6</b></td></tr>
+  </table>
+</div>
+  
+<div class="card">
+  <h3>Motor 2 — Centrifugal Pump Motor</h3>
+  <p>Status: <span style="background:#e8f5e9; color:#00c853; border:1px solid #00c853; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">NORMAL</span></p>
+  <table class="info-table">
+    <tr><td>Temperature</td><td><b>62.49 °C</b></td></tr>
+    <tr><td>Vibration X</td><td><b>0.0509 g</b></td></tr>
+    <tr><td>Flow Rate (L/min)</td><td><b>100.01</b></td></tr>
+    <tr><td>Fault Name</td><td><b>NORMAL</b></td></tr>
+    <tr><td>Anomaly Score</td><td><b>+0.028883</b></td></tr>
+    <tr><td>Frames Received</td><td><b>6</b></td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Section 3: Alert Log                                    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>Alert Log (from /api/alerts)</h2>
+<div class="count-badge">4 anomaly events logged</div>
+<table class="alert-table">
+  <thead>
+    <tr>
+      <th>Timestamp</th>
+      <th>Motor</th>
+      <th>Status</th>
+      <th>Fault</th>
+      <th>Temp (°C)</th>
+      <th>Vib (g)</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="background:#3a2f00"><td>02:20:22.130</td><td>Motor 2</td><td><span style="background:#fff8e1; color:#ff8f00; border:1px solid #ff8f00; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">WARNING</span></td><td>NORMAL</td><td>63.5</td><td>0.0392</td><td>-0.0213</td></tr><tr style="background:#3a2f00"><td>02:20:22.130</td><td>Motor 1</td><td><span style="background:#fff8e1; color:#ff8f00; border:1px solid #ff8f00; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">WARNING</span></td><td>NORMAL</td><td>65.5</td><td>0.0373</td><td>-0.0188</td></tr><tr style="background:#3a2f00"><td>02:20:17.511</td><td>Motor 2</td><td><span style="background:#fff8e1; color:#ff8f00; border:1px solid #ff8f00; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">WARNING</span></td><td>NORMAL</td><td>62.6</td><td>0.0401</td><td>-0.0084</td></tr><tr style="background:#3a2f00"><td>02:20:17.511</td><td>Motor 1</td><td><span style="background:#fff8e1; color:#ff8f00; border:1px solid #ff8f00; border-radius:4px; padding:2px 10px; font-weight:bold; font-size:13px;">WARNING</span></td><td>NORMAL</td><td>64.5</td><td>0.0382</td><td>-0.0059</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Section 4: History Charts                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>History Charts (from /api/history)</h2>
+<p style="color:var(--muted); font-size:12px; margin-bottom:8px">
+  Blue = Temperature (°C) &nbsp;|&nbsp; Red dashed = Anomaly Score
+</p>
+<div class="sparklines">
+  <div class="sparkline-box">
+    <h3>Motor 1 — Three-Phase Induction Motor</h3>
+    <svg width="400" height="120" xmlns="http://www.w3.org/2000/svg"
+     style="background:#12122a; border-radius:6px; overflow:visible">
+
+  <!-- Axis lines -->
+  <line x1="30" y1="10" x2="30" y2="90" stroke="#333" stroke-width="1"/>
+  <line x1="30" y1="90" x2="390" y2="90" stroke="#333" stroke-width="1"/>
+
+  <!-- Temperature sparkline (blue) -->
+  <path d="M 30.0,29.4 L 54.0,53.4 L 78.0,12.2 L 102.0,69.1 L 126.0,84.0 L 150.0,90.0 L 174.0,28.7 L 198.0,62.3 L 222.0,49.6 L 246.0,22.0 L 270.0,39.2 L 294.0,72.8 L 318.0,10.0 L 342.0,53.4 L 366.0,48.1 L 390.0,62.3" fill="none" stroke="#4fc3f7" stroke-width="1.8"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Score sparkline (red) -->
+  <path d="M 30.0,71.6 L 54.0,10.0 L 78.0,52.3 L 102.0,59.9 L 126.0,84.4 L 150.0,68.0 L 174.0,53.4 L 198.0,34.1 L 222.0,53.9 L 246.0,56.9 L 270.0,30.3 L 294.0,71.5 L 318.0,90.0 L 342.0,47.3 L 366.0,20.6 L 390.0,24.2" fill="none" stroke="#ef5350" stroke-width="1.8"
+        stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3,2"/>
+
+  <!-- Legend -->
+  <rect x="34" y="14" width="10" height="3" fill="#4fc3f7" rx="1"/>
+  <text x="47" y="19" fill="#4fc3f7" font-size="10" font-family="monospace">
+    Temp (64.4–65.5 °C)
+  </text>
+  <rect x="34" y="26" width="10" height="3" fill="#ef5350" rx="1"/>
+  <text x="47" y="31" fill="#ef5350" font-size="10" font-family="monospace">
+    Score (-0.0188–0.1665)
+  </text>
+
+  <!-- Y-axis labels -->
+  <text x="26" y="15" fill="#666" font-size="8" text-anchor="end">hi</text>
+  <text x="26" y="92" fill="#666" font-size="8" text-anchor="end">lo</text>
+
+  <!-- Motor label -->
+  <text x="390" y="104" fill="#888" font-size="9"
+        text-anchor="end" font-family="monospace">Motor 1 — last 16 readings</text>
+</svg>
+  </div>
+  <div class="sparkline-box">
+    <h3>Motor 2 — Centrifugal Pump Motor</h3>
+    <svg width="400" height="120" xmlns="http://www.w3.org/2000/svg"
+     style="background:#12122a; border-radius:6px; overflow:visible">
+
+  <!-- Axis lines -->
+  <line x1="30" y1="10" x2="30" y2="90" stroke="#333" stroke-width="1"/>
+  <line x1="30" y1="90" x2="390" y2="90" stroke="#333" stroke-width="1"/>
+
+  <!-- Temperature sparkline (blue) -->
+  <path d="M 30.0,28.6 L 54.0,53.5 L 78.0,12.3 L 102.0,69.0 L 126.0,84.6 L 150.0,90.0 L 174.0,28.6 L 198.0,62.0 L 222.0,49.6 L 246.0,21.7 L 270.0,38.7 L 294.0,72.9 L 318.0,10.0 L 342.0,52.7 L 366.0,48.1 L 390.0,62.8" fill="none" stroke="#4fc3f7" stroke-width="1.8"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Score sparkline (red) -->
+  <path d="M 30.0,71.6 L 54.0,10.0 L 78.0,53.2 L 102.0,59.9 L 126.0,84.4 L 150.0,68.3 L 174.0,53.4 L 198.0,33.9 L 222.0,53.9 L 246.0,56.9 L 270.0,30.5 L 294.0,71.5 L 318.0,90.0 L 342.0,47.3 L 366.0,21.3 L 390.0,25.0" fill="none" stroke="#ef5350" stroke-width="1.8"
+        stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3,2"/>
+
+  <!-- Legend -->
+  <rect x="34" y="14" width="10" height="3" fill="#4fc3f7" rx="1"/>
+  <text x="47" y="19" fill="#4fc3f7" font-size="10" font-family="monospace">
+    Temp (62.5–63.5 °C)
+  </text>
+  <rect x="34" y="26" width="10" height="3" fill="#ef5350" rx="1"/>
+  <text x="47" y="31" fill="#ef5350" font-size="10" font-family="monospace">
+    Score (-0.0213–0.1640)
+  </text>
+
+  <!-- Y-axis labels -->
+  <text x="26" y="15" fill="#666" font-size="8" text-anchor="end">hi</text>
+  <text x="26" y="92" fill="#666" font-size="8" text-anchor="end">lo</text>
+
+  <!-- Motor label -->
+  <text x="390" y="104" fill="#888" font-size="9"
+        text-anchor="end" font-family="monospace">Motor 2 — last 16 readings</text>
+</svg>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Section 5: Raw API Responses                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2>Raw API Responses (click to expand)</h2>
+<p style="color:var(--muted); font-size:12px; margin-bottom:4px">
+  Exact JSON payloads as returned by the gateway — for examiner verification
+  of the API contract.
+</p>
+
+<details style="margin-top:12px">
+  <summary style="cursor:pointer; color:#90caf9; font-weight:bold; padding:6px 0">
+    GET /api/status
+  </summary>
+  <pre class="json-block">{
+  "gateway_start": "2026-04-23T02:20:12",
+  "motor1": {
+    "ambient_temp_C": 24.42,
+    "anomaly_score": 0.032102,
+    "anomaly_status": "NORMAL",
+    "fault_id": 0,
+    "fault_name": "NORMAL",
+    "flow_rate_Lm": null,
+    "humidity_pct": 55.0,
+    "last_updated": "02:20:18.113",
+    "rx_count": 6,
+    "speed_rpm": 1480.2,
+    "temperature_C": 64.42,
+    "vibration_x_g": 0.0485
+  },
+  "motor2": {
+    "ambient_temp_C": 22.49,
+    "anomaly_score": 0.028883,
+    "anomaly_status": "NORMAL",
+    "fault_id": 0,
+    "fault_name": "NORMAL",
+    "flow_rate_Lm": 100.01,
+    "humidity_pct": 57.0,
+    "last_updated": "02:20:18.113",
+    "rx_count": 6,
+    "speed_rpm": null,
+    "temperature_C": 62.49,
+    "vibration_x_g": 0.0509
+  },
+  "timestamp": "2026-04-23T02:20:18.383"
+}</pre>
+</details>
+<details style="margin-top:12px">
+  <summary style="cursor:pointer; color:#90caf9; font-weight:bold; padding:6px 0">
+    GET /api/motor/1
+  </summary>
+  <pre class="json-block">{
+  "ambient_temp_C": 24.96,
+  "anomaly_score": 0.064873,
+  "anomaly_status": "NORMAL",
+  "fault_id": 0,
+  "fault_name": "NORMAL",
+  "flow_rate_Lm": null,
+  "humidity_pct": 55.0,
+  "last_updated": "02:20:19.847",
+  "motor_id": 1,
+  "rx_count": 9,
+  "speed_rpm": 1479.8,
+  "temperature_C": 64.96,
+  "timestamp": "2026-04-23T02:20:20.423",
+  "type": "Three-Phase Induction Motor",
+  "vibration_x_g": 0.0595
+}</pre>
+</details>
+<details style="margin-top:12px">
+  <summary style="cursor:pointer; color:#90caf9; font-weight:bold; padding:6px 0">
+    GET /api/motor/2
+  </summary>
+  <pre class="json-block">{
+  "ambient_temp_C": 23.52,
+  "anomaly_score": -0.0213,
+  "anomaly_status": "WARNING",
+  "fault_id": 0,
+  "fault_name": "NORMAL",
+  "flow_rate_Lm": 99.96,
+  "humidity_pct": 57.0,
+  "last_updated": "02:20:22.130",
+  "motor_id": 2,
+  "rx_count": 13,
+  "speed_rpm": null,
+  "temperature_C": 63.52,
+  "timestamp": "2026-04-23T02:20:22.461",
+  "type": "Centrifugal Pump Motor",
+  "vibration_x_g": 0.0392
+}</pre>
+</details>
+<details style="margin-top:12px">
+  <summary style="cursor:pointer; color:#90caf9; font-weight:bold; padding:6px 0">
+    GET /api/history
+  </summary>
+  <pre class="json-block">{
+  "motor1": [
+    {
+      "anomaly_score": 0.023862,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.1,
+      "temperature_C": 65.23,
+      "time": "02:20:15.104",
+      "vibration_x_g": 0.0015
+    },
+    {
+      "anomaly_score": 0.166494,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.3,
+      "temperature_C": 64.91,
+      "time": "02:20:15.664",
+      "vibration_x_g": 0.0086
+    },
+    {
+      "anomaly_score": 0.068584,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.2,
+      "temperature_C": 65.46,
+      "time": "02:20:16.276",
+      "vibration_x_g": 0.0306
+    },
+    {
+      "anomaly_score": 0.050852,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.7,
+      "temperature_C": 64.7,
+      "time": "02:20:16.896",
+      "vibration_x_g": 0.0432
+    },
+    {
+      "anomaly_score": -0.005895,
+      "anomaly_status": "WARNING",
+      "speed_rpm": 1479.4,
+      "temperature_C": 64.5,
+      "time": "02:20:17.511",
+      "vibration_x_g": 0.0382
+    },
+    {
+      "anomaly_score": 0.032102,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.2,
+      "temperature_C": 64.42,
+      "time": "02:20:18.113",
+      "vibration_x_g": 0.0485
+    },
+    {
+      "anomaly_score": 0.066086,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.8,
+      "temperature_C": 65.24,
+      "time": "02:20:18.718",
+      "vibration_x_g": 0.0599
+    },
+    {
+      "anomaly_score": 0.110562,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.4,
+      "temperature_C": 64.79,
+      "time": "02:20:19.280",
+      "vibration_x_g": 0.0591
+    },
+    {
+      "anomaly_score": 0.064873,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.8,
+      "temperature_C": 64.96,
+      "time": "02:20:19.847",
+      "vibration_x_g": 0.0595
+    },
+    {
+      "anomaly_score": 0.057883,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.8,
+      "temperature_C": 65.33,
+      "time": "02:20:20.442",
+      "vibration_x_g": 0.0519
+    },
+    {
+      "anomaly_score": 0.119559,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.6,
+      "temperature_C": 65.1,
+      "time": "02:20:21.018",
+      "vibration_x_g": 0.0552
+    },
+    {
+      "anomaly_score": 0.024119,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.6,
+      "temperature_C": 64.65,
+      "time": "02:20:21.571",
+      "vibration_x_g": 0.0481
+    },
+    {
+      "anomaly_score": -0.018794,
+      "anomaly_status": "WARNING",
+      "speed_rpm": 1479.3,
+      "temperature_C": 65.49,
+      "time": "02:20:22.130",
+      "vibration_x_g": 0.0373
+    },
+    {
+      "anomaly_score": 0.080138,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1479.6,
+      "temperature_C": 64.91,
+      "time": "02:20:22.700",
+      "vibration_x_g": 0.0353
+    },
+    {
+      "anomaly_score": 0.14198,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1480.2,
+      "temperature_C": 64.98,
+      "time": "02:20:23.287",
+      "vibration_x_g": 0.025
+    },
+    {
+      "anomaly_score": 0.13352,
+      "anomaly_status": "NORMAL",
+      "speed_rpm": 1481.0,
+      "temperature_C": 64.79,
+      "time": "02:20:23.848",
+      "vibration_x_g": 0.0122
+    }
+  ],
+  "motor2": [
+    {
+      "anomaly_score": 0.021294,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.94,
+      "temperature_C": 63.28,
+      "time": "02:20:15.104",
+      "vibration_x_g": 0.0016
+    },
+    {
+      "anomaly_score": 0.164018,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.02,
+      "temperature_C": 62.96,
+      "time": "02:20:15.664",
+      "vibration_x_g": 0.009
+    },
+    {
+      "anomaly_score": 0.063907,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.01,
+      "temperature_C": 63.49,
+      "time": "02:20:16.276",
+      "vibration_x_g": 0.0322
+    },
+    {
+      "anomaly_score": 0.048347,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.98,
+      "temperature_C": 62.76,
+      "time": "02:20:16.896",
+      "vibration_x_g": 0.0453
+    },
+    {
+      "anomaly_score": -0.008401,
+      "anomaly_status": "WARNING",
+      "flow_rate_Lm": 99.96,
+      "temperature_C": 62.56,
+      "time": "02:20:17.511",
+      "vibration_x_g": 0.0401
+    },
+    {
+      "anomaly_score": 0.028883,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.01,
+      "temperature_C": 62.49,
+      "time": "02:20:18.113",
+      "vibration_x_g": 0.0509
+    },
+    {
+      "anomaly_score": 0.063522,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.99,
+      "temperature_C": 63.28,
+      "time": "02:20:18.718",
+      "vibration_x_g": 0.0629
+    },
+    {
+      "anomaly_score": 0.10868,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.03,
+      "temperature_C": 62.85,
+      "time": "02:20:19.280",
+      "vibration_x_g": 0.0621
+    },
+    {
+      "anomaly_score": 0.062367,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.98,
+      "temperature_C": 63.01,
+      "time": "02:20:19.847",
+      "vibration_x_g": 0.0625
+    },
+    {
+      "anomaly_score": 0.055319,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.99,
+      "temperature_C": 63.37,
+      "time": "02:20:20.442",
+      "vibration_x_g": 0.0544
+    },
+    {
+      "anomaly_score": 0.116604,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.04,
+      "temperature_C": 63.15,
+      "time": "02:20:21.018",
+      "vibration_x_g": 0.058
+    },
+    {
+      "anomaly_score": 0.021614,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.97,
+      "temperature_C": 62.71,
+      "time": "02:20:21.571",
+      "vibration_x_g": 0.0505
+    },
+    {
+      "anomaly_score": -0.0213,
+      "anomaly_status": "WARNING",
+      "flow_rate_Lm": 99.96,
+      "temperature_C": 63.52,
+      "time": "02:20:22.130",
+      "vibration_x_g": 0.0392
+    },
+    {
+      "anomaly_score": 0.077633,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 99.97,
+      "temperature_C": 62.97,
+      "time": "02:20:22.700",
+      "vibration_x_g": 0.037
+    },
+    {
+      "anomaly_score": 0.137926,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.01,
+      "temperature_C": 63.03,
+      "time": "02:20:23.287",
+      "vibration_x_g": 0.0263
+    },
+    {
+      "anomaly_score": 0.129289,
+      "anomaly_status": "NORMAL",
+      "flow_rate_Lm": 100.07,
+      "temperature_C": 62.84,
+      "time": "02:20:23.848",
+      "vibration_x_g": 0.0128
+    }
+  ],
+  "timestamp": "2026-04-23T02:20:24.510"
+}</pre>
+</details>
+<details style="margin-top:12px">
+  <summary style="cursor:pointer; color:#90caf9; font-weight:bold; padding:6px 0">
+    GET /api/alerts
+  </summary>
+  <pre class="json-block">{
+  "alerts": [
+    {
+      "anomaly_score": -0.0213,
+      "fault_name": "NORMAL",
+      "motor": "motor2",
+      "status": "WARNING",
+      "temperature_C": 63.52,
+      "timestamp": "02:20:22.130",
+      "vibration_x_g": 0.0392
+    },
+    {
+      "anomaly_score": -0.018794,
+      "fault_name": "NORMAL",
+      "motor": "motor1",
+      "status": "WARNING",
+      "temperature_C": 65.49,
+      "timestamp": "02:20:22.130",
+      "vibration_x_g": 0.0373
+    },
+    {
+      "anomaly_score": -0.008401,
+      "fault_name": "NORMAL",
+      "motor": "motor2",
+      "status": "WARNING",
+      "temperature_C": 62.56,
+      "timestamp": "02:20:17.511",
+      "vibration_x_g": 0.0401
+    },
+    {
+      "anomaly_score": -0.005895,
+      "fault_name": "NORMAL",
+      "motor": "motor1",
+      "status": "WARNING",
+      "temperature_C": 64.5,
+      "timestamp": "02:20:17.511",
+      "vibration_x_g": 0.0382
+    }
+  ],
+  "count": 4,
+  "timestamp": "2026-04-23T02:20:26.551"
+}</pre>
+</details>
+
+<footer>
+  Smart Industrial Automation Project — Evidence Report<br>
+  Generated by demo_report.py on 2026-04-23T02:20:26
+</footer>
+
+</body>
+</html>

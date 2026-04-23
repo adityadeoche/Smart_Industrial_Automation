@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Industrial Automation — Live Monitor</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════
+   CSS VARIABLES — Industrial phosphor-green theme
+   ═══════════════════════════════════════════════════ */
+:root {
+  --bg-void:     #060a0d;
+  --bg-card:     #0f171f;
+  --border:      #1a2e3d;
+  --border-glow: #1e4060;
+  --ph-green:    #00ff88;
+  --ph-dim:      #00c266;
+  --ph-ghost:    #004d2a;
+  --ph-amber:    #ffb300;
+  --ph-red:      #ff3b3b;
+  --ph-grey:     #5a7080;
+  --ph-blue:     #00bfff;
+  --ph-purple:   #b060ff;
+  --text-primary:#c8e8d8;
+  --text-dim:    #5a7a6a;
+  --text-label:  #3d6050;
+  --font-data:   'JetBrains Mono', monospace;
+  --font-head:   'Chakra Petch', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.14) 2px, rgba(0,0,0,0.14) 4px);
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,255,136,0.04) 0%, transparent 70%);
+}
+
+/* ── HEADER ── */
+#header {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 52px;
+  background: rgba(6,10,13,0.97); border-bottom: 1px solid var(--border-glow);
+  backdrop-filter: blur(8px); box-shadow: 0 0 40px rgba(0,255,136,0.06);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title {
+  font-family: var(--font-head); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ph-green); text-shadow: 0 0 20px rgba(0,255,136,0.5);
+}
+.header-subtitle { font-size: 10px; color: var(--text-dim); letter-spacing: 0.07em; text-transform: uppercase; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+.gw-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ph-grey); transition: background 0.4s; }
+.gw-dot.online  { background: var(--ph-green); box-shadow: 0 0 8px var(--ph-green); animation: pulse-dot 2s infinite; }
+.gw-dot.offline { background: var(--ph-red);   box-shadow: 0 0 8px var(--ph-red); }
+@keyframes pulse-dot { 0%,100%{box-shadow:0 0 6px var(--ph-green)} 50%{box-shadow:0 0 14px var(--ph-green)} }
+.gw-indicator { display:flex; align-items:center; gap:7px; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; }
+#gw-label { color:var(--text-dim); }
+#gw-label.online  { color:var(--ph-green); }
+#gw-label.offline { color:var(--ph-red); }
+
+.hdr-btn {
+  background: rgba(0,0,0,0.4); border: 1px solid var(--border-glow); color: var(--ph-grey);
+  font-family: var(--font-data); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 2px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.hdr-btn:hover { border-color: var(--ph-green); color: var(--ph-green); }
+.hdr-btn.on-green { color: var(--ph-green); border-color: rgba(0,255,136,0.5); background: rgba(0,255,136,0.07); }
+.hdr-btn.on-amber { color: var(--ph-amber); border-color: rgba(255,179,0,0.5); background: rgba(255,179,0,0.07); }
+
+.last-updated { font-size: 10px; color: var(--text-dim); }
+#timestamp { color: var(--ph-dim); }
+
+.refresh-ring { width: 18px; height: 18px; }
+.refresh-ring svg { transform: rotate(-90deg); }
+.refresh-ring circle.rtrack { fill: none; stroke: var(--border); stroke-width: 2.5; }
+.refresh-ring circle.rfill  { fill: none; stroke: var(--ph-green); stroke-width: 2.5; stroke-dasharray: 50.3; stroke-linecap: round; transition: stroke-dasharray 0.15s linear; }
+
+/* ── TAB NAV ── */
+#tab-nav {
+  position: sticky; top: 52px; z-index: 150;
+  display: flex; background: rgba(6,10,13,0.97);
+  border-bottom: 1px solid var(--border); backdrop-filter: blur(8px);
+  padding: 0 20px;
+}
+.tab-btn {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text-dim); font-family: var(--font-head); font-size: 11px;
+  font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 10px 16px; cursor: pointer; transition: all 0.2s; margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--ph-green); border-bottom-color: var(--ph-green); text-shadow: 0 0 10px rgba(0,255,136,0.4); }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── MAIN ── */
+#app { position: relative; z-index: 1; max-width: 1500px; margin: 0 auto; padding: 16px 16px 60px; }
+
+/* ── PANEL ── */
+.panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; position: relative; overflow: hidden;
+}
+.panel::before, .panel::after {
+  content:''; position:absolute; width:10px; height:10px; border-color:var(--ph-ghost); border-style:solid; z-index:2;
+}
+.panel::before { top:0; left:0; border-width:2px 0 0 2px; border-radius:4px 0 0 0; }
+.panel::after  { bottom:0; right:0; border-width:0 2px 2px 0; border-radius:0 0 4px 0; }
+.panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 13px; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.3);
+}
+.panel-title { font-family:var(--font-head); font-size:10px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-dim); }
+
+/* ════════════════════════════════════════════════
+   TAB 1 — OVERVIEW
+   ════════════════════════════════════════════════ */
+.overview-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+
+.motor-card .card-body { padding:13px 13px 10px; }
+.motor-name-row { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+.motor-name { font-family:var(--font-head); font-size:16px; font-weight:700; color:var(--ph-green); letter-spacing:0.06em; text-shadow:0 0 14px rgba(0,255,136,0.3); }
+.motor-type { font-size:10px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+
+.status-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:2px; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; border:1px solid currentColor; transition:all 0.4s; }
+.status-badge.NORMAL       { color:var(--ph-green); background:rgba(0,255,136,0.08); border-color:rgba(0,255,136,0.35); }
+.status-badge.WARNING      { color:var(--ph-amber); background:rgba(255,179,0,0.08); border-color:rgba(255,179,0,0.35); }
+.status-badge.CRITICAL     { color:var(--ph-red);   background:rgba(255,59,59,0.12); border-color:rgba(255,59,59,0.5); animation:crit-pulse 1.1s infinite; }
+.status-badge.INITIALISING { color:var(--ph-grey);  background:rgba(90,112,128,0.08); border-color:rgba(90,112,128,0.3); }
+.status-dot-sm { width:6px; height:6px; border-radius:50%; background:currentColor; }
+@keyframes crit-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0)} 50%{box-shadow:0 0 12px 2px rgba(255,59,59,0.5)} }
+
+/* Motor top: gauge + health ring side by side */
+.motor-top { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; align-items:center; }
+
+/* Gauge */
+.gauge-wrap { display:flex; flex-direction:column; align-items:center; }
+.gauge-label { font-size:9px; color:var(--text-label); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:5px; }
+.gauge-svg-wrap { position:relative; width:148px; height:82px; }
+.gauge-svg { width:148px; height:82px; overflow:visible; }
+.gauge-track { fill:none; stroke:#0d1e29; stroke-width:12; stroke-linecap:round; }
+.gauge-fill  { fill:none; stroke-width:12; stroke-linecap:round; transition:stroke-dasharray 0.7s cubic-bezier(0.4,0,0.2,1), stroke 0.5s; }
+.gauge-needle {
+  position:absolute; bottom:4px; left:50%; width:2px; height:54px;
+  background:linear-gradient(to bottom, transparent 0%, var(--ph-green) 40%, white 100%);
+  transform-origin:bottom center; transform:translateX(-50%) rotate(-90deg);
+  transition:transform 0.7s cubic-bezier(0.4,0,0.2,1), background 0.5s;
+  border-radius:2px 2px 0 0;
+}
+.gauge-center-dot { position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:9px; height:9px; border-radius:50%; background:var(--bg-void); border:2px solid var(--ph-green); z-index:3; transition:border-color 0.5s; }
+.gauge-value-text { position:absolute; bottom:-19px; left:50%; transform:translateX(-50%); font-size:17px; font-weight:700; color:var(--ph-green); text-shadow:0 0 12px currentColor; transition:color 0.5s; white-space:nowrap; }
+.gauge-range-labels { display:flex; justify-content:space-between; width:148px; margin-top:26px; font-size:9px; color:var(--text-label); }
+
+/* Health ring */
+.health-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.health-label { font-size:9px; color:var(--text-label); letter-spacing:0.1em; text-transform:uppercase; }
+.health-ring-wrap { position:relative; width:96px; height:96px; }
+.health-ring-wrap svg { transform:rotate(-90deg); }
+.h-track { fill:none; stroke:#0d1e29; stroke-width:10; }
+.h-fill  { fill:none; stroke-width:10; stroke-linecap:round; transition:stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.5s; }
+.health-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.health-pct { font-size:21px; font-weight:700; color:var(--ph-green); line-height:1; transition:color 0.5s; }
+.health-txt { font-size:8px; color:var(--text-dim); letter-spacing:0.1em; text-transform:uppercase; }
+
+/* Sensor grid */
+.sensor-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px 9px; margin-bottom:7px; }
+.sensor-item { display:flex; flex-direction:column; gap:2px; padding:6px 8px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:3px; position:relative; overflow:hidden; }
+.sensor-item::before { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--ph-ghost); transition:background 0.4s; }
+.sensor-item.warn::before { background:var(--ph-amber); }
+.sensor-item.crit::before { background:var(--ph-red); }
+.sensor-item.ok::before   { background:var(--ph-green); }
+.sensor-label { font-size:9px; color:var(--text-label); letter-spacing:0.1em; text-transform:uppercase; }
+.sensor-value { font-size:16px; font-weight:700; color:var(--text-primary); transition:color 0.4s; line-height:1.1; }
+.sensor-value.warn { color:var(--ph-amber); text-shadow:0 0 8px rgba(255,179,0,0.4); }
+.sensor-value.crit { color:var(--ph-red);   text-shadow:0 0 8px rgba(255,59,59,0.4); }
+.sensor-value.ok   { color:var(--ph-green); }
+.sensor-unit { font-size:10px; color:var(--text-dim); }
+
+.fault-row { grid-column:1/-1; padding:5px 8px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:3px; display:flex; align-items:center; justify-content:space-between; }
+.fault-name-val { font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--ph-amber); transition:color 0.4s; }
+.fault-name-val.normal { color:var(--ph-dim); }
+.rx-count { font-size:10px; color:var(--text-dim); }
+
+/* PdM strip */
+.pdm-strip { padding:7px 9px; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:3px; display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:7px; }
+.pdm-label { font-size:9px; color:var(--text-label); letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap; }
+.pdm-value { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--ph-dim); transition:color 0.3s; }
+.pdm-value.pdm-warn { color:var(--ph-amber); }
+.pdm-value.pdm-crit { color:var(--ph-red); animation:crit-pulse 1.5s infinite; }
+.pdm-timer { font-size:10px; color:var(--text-dim); white-space:nowrap; }
+
+/* ════════════════════════════════════════════════
+   TAB 2 — SENSOR TRENDS
+   ════════════════════════════════════════════════ */
+.trends-controls { display:flex; align-items:center; gap:8px; padding:12px 0 12px; flex-wrap:wrap; }
+.ctrl-label { font-size:10px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; }
+.seg-group { display:flex; gap:0; }
+.seg-btn {
+  background:rgba(0,0,0,0.4); border:1px solid var(--border-glow); color:var(--text-dim);
+  font-family:var(--font-data); font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+  padding:5px 11px; cursor:pointer; transition:all 0.2s;
+}
+.seg-btn:first-child { border-radius:2px 0 0 2px; }
+.seg-btn:last-child  { border-radius:0 2px 2px 0; }
+.seg-btn + .seg-btn  { border-left:none; }
+.seg-btn.active { background:rgba(0,255,136,0.1); border-color:rgba(0,255,136,0.45); color:var(--ph-green); }
+.seg-divider { width:1px; background:var(--border); margin:0 8px; height:24px; }
+
+.trends-chart-wrap { padding:12px; height:290px; position:relative; }
+.trends-chart-wrap canvas { width:100% !important; height:100% !important; }
+.thresh-info { padding:5px 13px; border-top:1px solid var(--border); font-size:10px; color:var(--text-dim); }
+.thresh-info span { color:var(--ph-amber); }
+
+/* ════════════════════════════════════════════════
+   TAB 3 — ANALYSIS
+   ════════════════════════════════════════════════ */
+.analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+.analysis-chart-wrap { padding:12px; height:255px; position:relative; }
+.analysis-chart-wrap canvas { width:100% !important; height:100% !important; }
+
+/* ════════════════════════════════════════════════
+   TAB 4 — ALERTS
+   ════════════════════════════════════════════════ */
+.alerts-toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 13px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:8px; background:rgba(0,0,0,0.2); }
+.alerts-toolbar-left { display:flex; align-items:center; gap:8px; }
+
+.alert-table-wrap { max-height:420px; overflow-y:auto; }
+.alert-table-wrap::-webkit-scrollbar { width:5px; }
+.alert-table-wrap::-webkit-scrollbar-track { background:var(--bg-void); }
+.alert-table-wrap::-webkit-scrollbar-thumb { background:var(--border-glow); border-radius:3px; }
+table.alert-table { width:100%; border-collapse:collapse; font-size:11px; }
+table.alert-table thead { position:sticky; top:0; z-index:5; background:var(--bg-void); }
+table.alert-table th { padding:7px 10px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-label); border-bottom:1px solid var(--border); text-align:left; font-weight:500; }
+table.alert-table td { padding:6px 10px; border-bottom:1px solid rgba(26,46,61,0.5); white-space:nowrap; color:var(--text-primary); }
+table.alert-table tr.row-critical td { background:rgba(255,59,59,0.06); color:var(--ph-red); border-left:2px solid var(--ph-red); }
+table.alert-table tr.row-warning  td { background:rgba(255,179,0,0.05); color:var(--ph-amber); border-left:2px solid var(--ph-amber); }
+table.alert-table tr.row-normal   td { border-left:2px solid transparent; }
+.no-alerts { padding:40px; text-align:center; font-size:11px; color:var(--text-dim); letter-spacing:0.06em; }
+
+/* ── Email Modal ── */
+.modal-overlay { display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:5px; padding:24px 26px; max-width:390px; width:90%; box-shadow:0 0 60px rgba(0,255,136,0.1); }
+.modal-title { font-family:var(--font-head); font-size:13px; font-weight:700; color:var(--ph-green); letter-spacing:0.1em; margin-bottom:5px; }
+.modal-sub { font-size:10px; color:var(--text-dim); margin-bottom:16px; line-height:1.6; }
+.modal-label { font-size:10px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; display:block; margin-bottom:5px; }
+.modal-input, .modal-select { display:block; width:100%; margin-bottom:13px; padding:7px 9px; background:var(--bg-void); border:1px solid var(--border-glow); border-radius:3px; color:var(--text-primary); font-family:var(--font-data); font-size:12px; outline:none; }
+.modal-input:focus,.modal-select:focus { border-color:var(--ph-green); }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+.modal-btn-cancel { background:transparent; border:1px solid var(--border-glow); color:var(--text-dim); font-family:var(--font-data); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:6px 13px; border-radius:2px; cursor:pointer; }
+.modal-btn-save   { background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.4); color:var(--ph-green); font-family:var(--font-data); font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:6px 13px; border-radius:2px; cursor:pointer; }
+
+/* ── Toast ── */
+#toast-container { position:fixed; top:62px; right:14px; z-index:9999; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+.toast { pointer-events:auto; padding:8px 14px; border-radius:3px; font-family:var(--font-data); font-size:11px; letter-spacing:0.05em; box-shadow:0 4px 20px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.25s; max-width:290px; backdrop-filter:blur(8px); }
+.toast.ok   { background:rgba(0,255,136,0.12); border:1px solid rgba(0,255,136,0.4); color:var(--ph-green); }
+.toast.warn { background:rgba(255,179,0,0.12); border:1px solid rgba(255,179,0,0.4); color:var(--ph-amber); }
+.toast.crit { background:rgba(255,59,59,0.12); border:1px solid rgba(255,59,59,0.4); color:var(--ph-red); }
+
+/* ── Footer ── */
+#footer-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:rgba(6,10,13,0.97); border-top:1px solid var(--border); padding:5px 18px; display:flex; align-items:center; justify-content:space-between; font-size:10px; color:var(--text-dim); backdrop-filter:blur(8px); }
+.footer-url { color:var(--ph-dim); }
+#footer-alert-count { color:var(--ph-amber); font-weight:700; }
+
+/* ── Responsive ── */
+@media (max-width:900px) {
+  .overview-grid,.analysis-grid { grid-template-columns:1fr; }
+  .motor-top { grid-template-columns:1fr; }
+  .header-title { font-size:11px; }
+  .tab-btn { padding:8px 10px; font-size:9px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header id="header">
+  <div class="header-left">
+    <div>
+      <div class="header-title">Smart Industrial Automation &mdash; Live Monitor</div>
+      <div class="header-subtitle">CAN FD Bus &bull; Isolation Forest ML &bull; Real-time Anomaly Detection</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="gw-indicator">
+      <div id="gw-dot" class="gw-dot"></div>
+      <span id="gw-label">Connecting…</span>
+    </div>
+    <div class="last-updated">UPDATED <span id="timestamp">—</span></div>
+    <button id="btn-notif" class="hdr-btn" onclick="toggleNotifications()">🔔 NOTIF: OFF</button>
+    <button id="btn-sound" class="hdr-btn" onclick="toggleSound()">🔇 SOUND: OFF</button>
+    <div class="refresh-ring">
+      <svg viewBox="0 0 18 18" width="18" height="18">
+        <circle class="rtrack" cx="9" cy="9" r="8"/>
+        <circle id="refresh-arc" class="rfill" cx="9" cy="9" r="8"/>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ TAB NAV ═══ -->
+<nav id="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('overview',this)">⬡ Overview</button>
+  <button class="tab-btn" onclick="switchTab('trends',this)">📈 Sensor Trends</button>
+  <button class="tab-btn" onclick="switchTab('analysis',this)">🔬 Analysis</button>
+  <button class="tab-btn" onclick="switchTab('alerts',this)">⚠ Alerts</button>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main id="app">
+
+<!-- ──────────────────────────────────────────────
+     TAB 1 — OVERVIEW
+     ────────────────────────────────────────────── -->
+<div id="tab-overview" class="tab-pane active">
+<div class="overview-grid">
+
+  <!-- MOTOR 1 -->
+  <div class="panel motor-card">
+    <div class="panel-header">
+      <span class="panel-title">Motor 01 — Three-Phase Induction Motor</span>
+      <span class="status-badge INITIALISING" id="m1-badge"><span class="status-dot-sm"></span><span id="m1-status-text">INIT</span></span>
+    </div>
+    <div class="card-body">
+      <div class="motor-top">
+        <!-- Anomaly Gauge -->
+        <div class="gauge-wrap">
+          <div class="gauge-label">⬡ Anomaly Score — ML Output</div>
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 148 82">
+              <path class="gauge-track" d="M 14 74 A 60 60 0 0 1 134 74"/>
+              <path id="m1-gauge-fill" class="gauge-fill" d="M 14 74 A 60 60 0 0 1 134 74"
+                stroke="var(--ph-green)" stroke-dasharray="0 188.5"/>
+              <line x1="74" y1="14" x2="74" y2="22" stroke="#1a2e3d" stroke-width="1.5"/>
+              <line x1="15" y1="62" x2="22" y2="65" stroke="#1a2e3d" stroke-width="1.5"/>
+              <line x1="133" y1="62" x2="126" y2="65" stroke="#1a2e3d" stroke-width="1.5"/>
+            </svg>
+            <div id="m1-needle" class="gauge-needle"></div>
+            <div id="m1-center-dot" class="gauge-center-dot"></div>
+            <div id="m1-gauge-val" class="gauge-value-text">—</div>
+          </div>
+          <div class="gauge-range-labels">
+            <span style="color:var(--ph-red)">-0.2</span>
+            <span style="color:var(--ph-amber)">0.0</span>
+            <span style="color:var(--ph-green)">+0.2</span>
+          </div>
+        </div>
+        <!-- Health Ring -->
+        <div class="health-wrap">
+          <div class="health-label">Machine Health</div>
+          <div class="health-ring-wrap">
+            <svg viewBox="0 0 96 96" width="96" height="96">
+              <circle class="h-track" cx="48" cy="48" r="40"/>
+              <circle id="m1-health-fill" class="h-fill" cx="48" cy="48" r="40"
+                stroke="var(--ph-green)" stroke-dasharray="0 251.3"/>
+            </svg>
+            <div class="health-center">
+              <div id="m1-health-pct" class="health-pct">—</div>
+              <div class="health-txt">Health</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sensor-item" id="m1-temp-item"><span class="sensor-label">Temperature</span><span class="sensor-value" id="m1-temp">—</span><span class="sensor-unit">°C</span></div>
+        <div class="sensor-item" id="m1-vib-item"><span class="sensor-label">Vibration X</span><span class="sensor-value" id="m1-vib">—</span><span class="sensor-unit">g</span></div>
+        <div class="sensor-item" id="m1-rpm-item"><span class="sensor-label">Speed</span><span class="sensor-value" id="m1-rpm">—</span><span class="sensor-unit">RPM</span></div>
+        <div class="sensor-item" id="m1-hum-item"><span class="sensor-label">Humidity</span><span class="sensor-value" id="m1-hum">—</span><span class="sensor-unit">%</span></div>
+        <div class="fault-row">
+          <div><div class="sensor-label">Fault Detected</div><div class="fault-name-val normal" id="m1-fault">—</div></div>
+          <div class="rx-count">RX: <span id="m1-rx">0</span></div>
+        </div>
+      </div>
+
+      <div class="pdm-strip">
+        <span class="pdm-label">PdM Estimate</span>
+        <span id="m1-pdm-val" class="pdm-value">Monitoring…</span>
+        <span id="m1-pdm-timer" class="pdm-timer"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOTOR 2 -->
+  <div class="panel motor-card">
+    <div class="panel-header">
+      <span class="panel-title">Motor 02 — Centrifugal Pump Motor</span>
+      <span class="status-badge INITIALISING" id="m2-badge"><span class="status-dot-sm"></span><span id="m2-status-text">INIT</span></span>
+    </div>
+    <div class="card-body">
+      <div class="motor-top">
+        <div class="gauge-wrap">
+          <div class="gauge-label">⬡ Anomaly Score — ML Output</div>
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 148 82">
+              <path class="gauge-track" d="M 14 74 A 60 60 0 0 1 134 74"/>
+              <path id="m2-gauge-fill" class="gauge-fill" d="M 14 74 A 60 60 0 0 1 134 74"
+                stroke="var(--ph-green)" stroke-dasharray="0 188.5"/>
+              <line x1="74" y1="14" x2="74" y2="22" stroke="#1a2e3d" stroke-width="1.5"/>
+              <line x1="15" y1="62" x2="22" y2="65" stroke="#1a2e3d" stroke-width="1.5"/>
+              <line x1="133" y1="62" x2="126" y2="65" stroke="#1a2e3d" stroke-width="1.5"/>
+            </svg>
+            <div id="m2-needle" class="gauge-needle"></div>
+            <div id="m2-center-dot" class="gauge-center-dot"></div>
+            <div id="m2-gauge-val" class="gauge-value-text">—</div>
+          </div>
+          <div class="gauge-range-labels">
+            <span style="color:var(--ph-red)">-0.2</span>
+            <span style="color:var(--ph-amber)">0.0</span>
+            <span style="color:var(--ph-green)">+0.2</span>
+          </div>
+        </div>
+        <div class="health-wrap">
+          <div class="health-label">Machine Health</div>
+          <div class="health-ring-wrap">
+            <svg viewBox="0 0 96 96" width="96" height="96">
+              <circle class="h-track" cx="48" cy="48" r="40"/>
+              <circle id="m2-health-fill" class="h-fill" cx="48" cy="48" r="40"
+                stroke="var(--ph-green)" stroke-dasharray="0 251.3"/>
+            </svg>
+            <div class="health-center">
+              <div id="m2-health-pct" class="health-pct">—</div>
+              <div class="health-txt">Health</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sensor-item" id="m2-temp-item"><span class="sensor-label">Temperature</span><span class="sensor-value" id="m2-temp">—</span><span class="sensor-unit">°C</span></div>
+        <div class="sensor-item" id="m2-vib-item"><span class="sensor-label">Vibration X</span><span class="sensor-value" id="m2-vib">—</span><span class="sensor-unit">g</span></div>
+        <div class="sensor-item" id="m2-flow-item"><span class="sensor-label">Flow Rate</span><span class="sensor-value" id="m2-flow">—</span><span class="sensor-unit">L/min</span></div>
+        <div class="sensor-item" id="m2-hum-item"><span class="sensor-label">Humidity</span><span class="sensor-value" id="m2-hum">—</span><span class="sensor-unit">%</span></div>
+        <div class="fault-row">
+          <div><div class="sensor-label">Fault Detected</div><div class="fault-name-val normal" id="m2-fault">—</div></div>
+          <div class="rx-count">RX: <span id="m2-rx">0</span></div>
+        </div>
+      </div>
+
+      <div class="pdm-strip">
+        <span class="pdm-label">PdM Estimate</span>
+        <span id="m2-pdm-val" class="pdm-value">Monitoring…</span>
+        <span id="m2-pdm-timer" class="pdm-timer"></span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /overview-grid -->
+</div><!-- /tab-overview -->
+
+
+<!-- ──────────────────────────────────────────────
+     TAB 2 — SENSOR TRENDS
+     ────────────────────────────────────────────── -->
+<div id="tab-trends" class="tab-pane">
+  <div class="trends-controls">
+    <span class="ctrl-label">Motor:</span>
+    <div class="seg-group" id="motor-seg">
+      <button class="seg-btn active" onclick="setTrendMotor(1,this)">M1 Induction</button>
+      <button class="seg-btn" onclick="setTrendMotor(2,this)">M2 Pump</button>
+    </div>
+    <div class="seg-divider"></div>
+    <span class="ctrl-label">Channel:</span>
+    <div class="seg-group" id="channel-seg">
+      <button class="seg-btn active" onclick="setTrendCh('temperature_C',this)">Temperature</button>
+      <button class="seg-btn" onclick="setTrendCh('vibration_x_g',this)">Vibration X</button>
+      <button class="seg-btn" id="ch-speed" onclick="setTrendCh('speed_rpm',this)">Speed / Flow</button>
+      <button class="seg-btn" onclick="setTrendCh('humidity_pct',this)">Humidity</button>
+      <button class="seg-btn" onclick="setTrendCh('anomaly_score',this)">Anomaly Score</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title" id="trends-title">Temperature — Motor 01 (last 60 samples)</span>
+    </div>
+    <div class="trends-chart-wrap"><canvas id="trends-chart"></canvas></div>
+    <div class="thresh-info">Threshold reference: <span id="thresh-val">80°C — ISO 60034-1 winding limit</span> &nbsp;|&nbsp; Source: /api/history</div>
+  </div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────
+     TAB 3 — ANALYSIS
+     ────────────────────────────────────────────── -->
+<div id="tab-analysis" class="tab-pane">
+<div class="analysis-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Health Radar — Multi-Sensor Snapshot</span>
+      <span style="font-size:10px;color:var(--text-dim)">Both motors overlaid</span>
+    </div>
+    <div class="analysis-chart-wrap"><canvas id="chart-radar"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Scatter — Temperature vs Vibration X</span>
+      <span style="font-size:10px;color:var(--text-dim)">Colour = anomaly status</span>
+    </div>
+    <div class="analysis-chart-wrap"><canvas id="chart-scatter"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Fault Frequency — Alert History</span>
+      <span style="font-size:10px;color:var(--text-dim)">Count per fault type</span>
+    </div>
+    <div class="analysis-chart-wrap"><canvas id="chart-bar"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Alert Severity Distribution</span>
+      <span style="font-size:10px;color:var(--text-dim)">NORMAL / WARNING / CRITICAL</span>
+    </div>
+    <div class="analysis-chart-wrap"><canvas id="chart-donut"></canvas></div>
+  </div>
+</div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────
+     TAB 4 — ALERTS
+     ────────────────────────────────────────────── -->
+<div id="tab-alerts" class="tab-pane">
+  <div class="panel" style="margin-top:14px;">
+    <div class="alerts-toolbar">
+      <div class="alerts-toolbar-left">
+        <span class="panel-title">⚠ Alert Event Log</span>
+        <span id="alert-count-badge" style="font-size:10px;color:var(--ph-amber);">0 alerts</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="hdr-btn" onclick="downloadCSV()">⬇ Download CSV</button>
+        <button id="btn-email" class="hdr-btn" onclick="openEmailModal()">📧 Email Alerts: OFF</button>
+      </div>
+    </div>
+    <div class="alert-table-wrap">
+      <div class="no-alerts" id="no-alerts-msg">No alerts yet — monitoring active</div>
+      <table class="alert-table" id="alert-table" style="display:none">
+        <thead><tr><th>Timestamp</th><th>Motor</th><th>Fault</th><th>Status</th><th>Score</th><th>Temp (°C)</th><th>Vib (g)</th></tr></thead>
+        <tbody id="alert-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- Fixed footer -->
+<div id="footer-bar">
+  <span>Polling: <span class="footer-url">http://localhost:5000</span> &nbsp;— /api/status · /api/history · /api/alerts &nbsp;— 2s interval</span>
+  <span>Total alerts: <span id="footer-alert-count">0</span> &nbsp;|&nbsp; REST polling — stateless, RPi-compatible</span>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Email Modal -->
+<div id="email-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">📧 Email Alert Setup</div>
+    <div class="modal-sub">Sends alert payload to <code style="color:var(--ph-dim)">/api/email_alert</code> on the gateway. Configure SMTP env vars (SMTP_HOST, SMTP_USER, SMTP_PASS) in ml_gateway.py.</div>
+    <label class="modal-label">Recipient Email</label>
+    <input id="email-input" class="modal-input" type="email" placeholder="engineer@plant.com">
+    <label class="modal-label">Alert Level</label>
+    <select id="email-level" class="modal-select">
+      <option value="CRITICAL">CRITICAL only</option>
+      <option value="WARNING">WARNING + CRITICAL</option>
+    </select>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeEmailModal()">Cancel</button>
+      <button class="modal-btn-save" onclick="saveEmailConfig()">Save &amp; Enable</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+
+/* ── CONFIG ── */
+const API_BASE      = 'http://localhost:5000';
+const POLL_INTERVAL = 2000;
+
+/* ── SHARED STATE ── */
+let _allAlerts  = [];
+let _histData   = { motor1:[], motor2:[] };
+let _statusData = { motor1:{}, motor2:{} };
+
+/* ── PdM counters per motor ── */
+const _pdm = {
+  motor1: { cycles:0, startTime:null, lastStatus:'NORMAL' },
+  motor2: { cycles:0, startTime:null, lastStatus:'NORMAL' },
+};
+
+/* ════════════════════════════════════════════════
+   TAB SWITCHING
+   ════════════════════════════════════════════════ */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'trends')   refreshTrendsChart();
+  if (name === 'analysis') refreshAnalysis();
+}
+
+/* ════════════════════════════════════════════════
+   HELPERS — colour thresholds
+   ════════════════════════════════════════════════ */
+/* VIVA NOTE: Thresholds match ISO 60034-1 (temp) and ISO 10816-3 (vibration).
+   green < 70°C / 0.1g  → unrestricted operation
+   amber 70–80°C / 0.1–0.3g → schedule inspection
+   red > 80°C / 0.3g    → immediate action                */
+function tempClass(v)  { return v > 80 ? 'crit' : v > 70 ? 'warn' : 'ok'; }
+function vibClass(v)   { return v > 0.3 ? 'crit' : v > 0.1 ? 'warn' : 'ok'; }
+
+/* VIVA NOTE: IsolationForest.decision_function thresholds mirror ml_gateway.py exactly.
+   score > 0.0   → NORMAL   (far from anomaly boundary)
+   -0.10 to 0.0  → WARNING
+   < -0.10       → CRITICAL                               */
+function scoreColor(s) {
+  return s < -0.10 ? '#ff3b3b' : s < 0.0 ? '#ffb300' : '#00ff88';
+}
+function scoreToFrac(s) { return (Math.max(-0.2, Math.min(0.2, s)) + 0.2) / 0.4; }
+
+/* ════════════════════════════════════════════════
+   ANOMALY GAUGE
+   ════════════════════════════════════════════════ */
+const ARC = 188.5; // π × 60
+
+function updateGauge(fillId, needleId, centerId, valId, score) {
+  const frac  = scoreToFrac(score);
+  const color = scoreColor(score);
+  const fill  = document.getElementById(fillId);
+  const ndl   = document.getElementById(needleId);
+  const ctr   = document.getElementById(centerId);
+  const val   = document.getElementById(valId);
+  if (!fill) return;
+  fill.setAttribute('stroke', color);
+  fill.setAttribute('stroke-dasharray', `${frac*ARC} ${ARC-frac*ARC}`);
+  ndl.style.transform  = `translateX(-50%) rotate(${frac*180-90}deg)`;
+  ndl.style.background = `linear-gradient(to bottom, transparent 0%, ${color} 40%, white 100%)`;
+  ctr.style.borderColor = color;
+  val.textContent = (score >= 0 ? '+' : '') + score.toFixed(4);
+  val.style.color = color;
+  val.style.textShadow = `0 0 12px ${color}`;
+}
+
+/* ════════════════════════════════════════════════
+   HEALTH SCORE RING
+   ════════════════════════════════════════════════
+   VIVA NOTE: Health score formula (client-side, no extra endpoint):
+   • Anomaly component (50%): score normalised from [-0.2,+0.2] → [0,1]
+   • Temperature component (25%): linear decay 65→80°C, 0% above 80°C
+   • Vibration component (25%): linear decay 0.05→0.3g, 0% above 0.3g
+   Final value clamped [0,100]. Colour: green≥70%, amber≥40%, red<40%.  */
+const HCIRC = 2 * Math.PI * 40; // 251.3
+
+function calcHealth(score, temp, vib) {
+  const sH = Math.max(0, Math.min(1, (score + 0.2) / 0.4));
+  const tH = Math.max(0, Math.min(1, 1 - Math.max(0, temp - 65) / 15));
+  const vH = Math.max(0, Math.min(1, 1 - Math.max(0, vib - 0.05) / 0.25));
+  return Math.round((sH*0.5 + tH*0.25 + vH*0.25) * 100);
+}
+
+function updateHealth(fillId, pctId, score, temp, vib) {
+  const h     = calcHealth(score, temp, vib);
+  const color = h >= 70 ? '#00ff88' : h >= 40 ? '#ffb300' : '#ff3b3b';
+  const fill  = document.getElementById(fillId);
+  const pct   = document.getElementById(pctId);
+  if (!fill) return;
+  fill.setAttribute('stroke', color);
+  fill.setAttribute('stroke-dasharray', `${h/100*HCIRC} ${HCIRC-h/100*HCIRC}`);
+  pct.textContent = h + '%';
+  pct.style.color = color;
+}
+
+/* ════════════════════════════════════════════════
+   STATUS BADGE
+   ════════════════════════════════════════════════ */
+function updateBadge(badgeId, textId, status) {
+  const b = document.getElementById(badgeId);
+  const t = document.getElementById(textId);
+  if (b) b.className = `status-badge ${status}`;
+  if (t) t.textContent = status;
+}
+
+/* ════════════════════════════════════════════════
+   SENSOR CELL
+   ════════════════════════════════════════════════ */
+function setSensor(itemId, valId, value, cls, dec) {
+  const item = document.getElementById(itemId);
+  const val  = document.getElementById(valId);
+  if (!item || !val) return;
+  val.textContent = (value != null) ? Number(value).toFixed(dec) : '—';
+  val.className   = 'sensor-value ' + (cls || '');
+  item.className  = 'sensor-item '  + (cls || '');
+}
+
+/* ════════════════════════════════════════════════
+   PREDICTIVE MAINTENANCE ESTIMATE
+   ════════════════════════════════════════════════
+   VIVA NOTE: Threshold-based PdM estimate. Tracks how long each motor
+   has been in a non-NORMAL state using a cycle counter and wall-clock
+   timer. Does NOT claim specific days-to-failure (no degradation curve
+   data available). Three states:
+     NORMAL   → "Operating normally"
+     WARNING  → "Schedule inspection" with time-at-risk counter
+     CRITICAL → "Immediate action required"                       */
+function updatePdM(motorKey, status) {
+  const p   = motorKey === 'motor1' ? 'm1' : 'm2';
+  const pdm = _pdm[motorKey];
+  const vEl = document.getElementById(`${p}-pdm-val`);
+  const tEl = document.getElementById(`${p}-pdm-timer`);
+  if (!vEl) return;
+
+  if (status === 'NORMAL' || status === 'INITIALISING') {
+    pdm.cycles = 0; pdm.startTime = null; pdm.lastStatus = 'NORMAL';
+    vEl.textContent = 'Operating normally';
+    vEl.className   = 'pdm-value';
+    tEl.textContent = '';
+    return;
+  }
+
+  if (pdm.lastStatus === 'NORMAL') pdm.startTime = Date.now();
+  pdm.lastStatus = status;
+  pdm.cycles++;
+
+  if (status === 'CRITICAL') {
+    vEl.textContent = '\u26A1 Immediate action required';
+    vEl.className   = 'pdm-value pdm-crit';
+  } else {
+    vEl.textContent = pdm.cycles < 5 ? '\uD83D\uDD27 Schedule inspection soon' : '\u26A0 Inspection overdue';
+    vEl.className   = 'pdm-value pdm-warn';
+  }
+
+  if (pdm.startTime) {
+    const s = Math.floor((Date.now() - pdm.startTime) / 1000);
+    tEl.textContent = `${Math.floor(s/60)}m ${s%60}s at risk`;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   MOTOR CARD UPDATER
+   ════════════════════════════════════════════════ */
+function updateMotorCard(n, data) {
+  const p  = n === 1 ? 'm1' : 'm2';
+  const mk = n === 1 ? 'motor1' : 'motor2';
+  const status = data.anomaly_status || 'INITIALISING';
+  const score  = data.anomaly_score  ?? 0;
+  const temp   = data.temperature_C  ?? 65;
+  const vib    = data.vibration_x_g  ?? 0.05;
+
+  updateBadge(`${p}-badge`, `${p}-status-text`, status);
+  updateGauge(`${p}-gauge-fill`, `${p}-needle`, `${p}-center-dot`, `${p}-gauge-val`, score);
+  updateHealth(`${p}-health-fill`, `${p}-health-pct`, score, temp, vib);
+
+  setSensor(`${p}-temp-item`, `${p}-temp`, temp,               tempClass(temp), 1);
+  setSensor(`${p}-vib-item`,  `${p}-vib`,  vib,                vibClass(vib),   4);
+
+  if (n === 1) {
+    const rEl = document.getElementById('m1-rpm');
+    const rIt = document.getElementById('m1-rpm-item');
+    if (rEl) rEl.textContent = data.speed_rpm != null ? Number(data.speed_rpm).toFixed(0) : '—';
+    if (rIt) rIt.className   = 'sensor-item' + (data.speed_rpm != null ? ' ok' : '');
+  } else {
+    const fEl = document.getElementById('m2-flow');
+    const fIt = document.getElementById('m2-flow-item');
+    if (fEl) fEl.textContent = data.flow_rate_Lm != null ? Number(data.flow_rate_Lm).toFixed(1) : '—';
+    if (fIt) fIt.className   = 'sensor-item' + (data.flow_rate_Lm != null ? ' ok' : '');
+  }
+
+  const hEl = document.getElementById(`${p}-hum`);
+  const hIt = document.getElementById(`${p}-hum-item`);
+  if (hEl) hEl.textContent = data.humidity_pct != null ? Number(data.humidity_pct).toFixed(1) : '—';
+  if (hIt) hIt.className   = 'sensor-item' + (data.humidity_pct != null ? ' ok' : '');
+
+  const fEl2 = document.getElementById(`${p}-fault`);
+  if (fEl2) {
+    fEl2.textContent = (data.fault_name || 'NORMAL').replace(/_/g, ' ');
+    fEl2.className   = 'fault-name-val' + ((!data.fault_name || data.fault_name === 'NORMAL') ? ' normal' : '');
+  }
+
+  const rxEl = document.getElementById(`${p}-rx`);
+  if (rxEl) rxEl.textContent = data.rx_count ?? 0;
+
+  updatePdM(mk, status);
+}
+
+/* ════════════════════════════════════════════════
+   ALERT TABLE
+   ════════════════════════════════════════════════ */
+function renderAlerts(alerts) {
+  _allAlerts = alerts;
+  const cb = document.getElementById('alert-count-badge');
+  const fc = document.getElementById('footer-alert-count');
+  const nm = document.getElementById('no-alerts-msg');
+  const tb = document.getElementById('alert-table');
+  const bd = document.getElementById('alert-tbody');
+  if (cb) cb.textContent = alerts.length + ' alert' + (alerts.length !== 1 ? 's' : '');
+  if (fc) fc.textContent = alerts.length;
+  if (!alerts.length) { if (nm) nm.style.display=''; if (tb) tb.style.display='none'; return; }
+  if (nm) nm.style.display='none'; if (tb) tb.style.display='';
+  bd.innerHTML = alerts.map(a => {
+    const rc = a.status==='CRITICAL'?'row-critical':a.status==='WARNING'?'row-warning':'row-normal';
+    return `<tr class="${rc}">
+      <td>${a.timestamp||'—'}</td>
+      <td>${(a.motor||'—').replace('motor','M')}</td>
+      <td>${(a.fault_name||'—').replace(/_/g,' ')}</td>
+      <td>${a.status||'—'}</td>
+      <td>${a.anomaly_score!=null?Number(a.anomaly_score).toFixed(4):'—'}</td>
+      <td>${a.temperature_C!=null?Number(a.temperature_C).toFixed(1):'—'}</td>
+      <td>${a.vibration_x_g!=null?Number(a.vibration_x_g).toFixed(4):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════
+   GATEWAY / TIMESTAMP / REFRESH RING
+   ════════════════════════════════════════════════ */
+function setGateway(on) {
+  const d = document.getElementById('gw-dot');
+  const l = document.getElementById('gw-label');
+  d.className   = 'gw-dot ' + (on ? 'online' : 'offline');
+  l.className   = on ? 'online' : 'offline';
+  l.textContent = on ? 'GATEWAY ONLINE' : 'GATEWAY OFFLINE';
+}
+function setTimestamp() {
+  document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('en-GB',{hour12:false});
+}
+let _cdStart = Date.now();
+const _arc   = document.getElementById('refresh-arc');
+const _CIRC  = 50.3;
+function animateRing() {
+  const f = Math.min((Date.now()-_cdStart)/POLL_INTERVAL,1) * _CIRC;
+  _arc.setAttribute('stroke-dasharray', `${f} ${_CIRC-f}`);
+  requestAnimationFrame(animateRing);
+}
+requestAnimationFrame(animateRing);
+
+
+/* ════════════════════════════════════════════════
+   TAB 2 — SENSOR TRENDS
+   ════════════════════════════════════════════════
+   VIVA NOTE: All sensor channels come from /api/history which already
+   returns 60 readings per motor. No new endpoint needed. Threshold lines
+   are rendered as a second dataset with dashed borderDash styling.      */
+
+let _trendMotor = 1;
+let _trendCh    = 'temperature_C';
+let _trendChart = null;
+
+/* Channel config: label, colour, threshold value, threshold description */
+const CH_CFG = {
+  temperature_C: { label:'Temperature (°C)',  color:'#ff6b35', thresh:80,    threshDesc:'80°C — ISO 60034-1 Class F winding limit' },
+  vibration_x_g: { label:'Vibration X (g)',   color:'#00bfff', thresh:0.3,   threshDesc:'0.3g — ISO 10816-3 Zone D (damage risk)' },
+  speed_rpm:     { label:'Speed (RPM)',        color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
+  flow_rate_Lm:  { label:'Flow Rate (L/min)',  color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
+  humidity_pct:  { label:'Humidity (%)',       color:'#b060ff', thresh:80,    threshDesc:'80% — upper indoor comfort/electronics limit' },
+  anomaly_score: { label:'Anomaly Score',      color:'#ffb300', thresh:-0.10, threshDesc:'-0.10 — CRITICAL boundary (Isolation Forest)' },
+};
+
+function setTrendMotor(n, btn) {
+  _trendMotor = n;
+  document.querySelectorAll('#motor-seg .seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshTrendsChart();
+}
+
+function setTrendCh(ch, btn) {
+  _trendCh = ch;
+  document.querySelectorAll('#channel-seg .seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshTrendsChart();
+}
+
+function refreshTrendsChart() {
+  const mk   = _trendMotor === 1 ? 'motor1' : 'motor2';
+  const hist = _histData[mk] || [];
+  let ch     = _trendCh;
+  if (ch === 'speed_rpm' && _trendMotor === 2) ch = 'flow_rate_Lm';
+
+  const cfg    = CH_CFG[ch] || CH_CFG['temperature_C'];
+  const labels = hist.map((_,i) => i+1);
+  const values = hist.map(h => h[ch] ?? null);
+  const mLabel = _trendMotor===1 ? 'Motor 01' : 'Motor 02';
+
+  document.getElementById('trends-title').textContent =
+    `${cfg.label} — ${mLabel} (last ${hist.length} samples)`;
+  document.getElementById('thresh-val').textContent = cfg.threshDesc;
+
+  const datasets = [{
+    label: cfg.label, data: values,
+    borderColor: cfg.color, backgroundColor: cfg.color+'1a',
+    borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true,
+  }];
+  if (cfg.thresh !== null) {
+    datasets.push({
+      label: 'Threshold', data: labels.map(() => cfg.thresh),
+      borderColor: '#ff3b3b', borderWidth: 1,
+      borderDash: [4,4], pointRadius: 0, fill: false,
+    });
+  }
+
+  const opts = {
+    responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{
+      legend:{ labels:{ color:'#5a7a6a', font:{family:'JetBrains Mono',size:10}, boxWidth:12 } },
+      tooltip:{ mode:'index', intersect:false, backgroundColor:'#0b1117', borderColor:'#1a2e3d',
+        borderWidth:1, titleColor:'#00ff88', bodyColor:'#c8e8d8', titleFont:{family:'JetBrains Mono',size:10} },
+    },
+    scales:{
+      x:{ ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9},maxTicksLimit:12}, grid:{color:'#0d1e29'} },
+      y:{ ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9}}, grid:{color:'#0d1e29'} },
+    },
+  };
+
+  if (_trendChart) {
+    _trendChart.data.labels   = labels;
+    _trendChart.data.datasets = datasets;
+    _trendChart.options       = opts;
+    _trendChart.update('none');
+  } else {
+    _trendChart = new Chart(document.getElementById('trends-chart'), { type:'line', data:{labels,datasets}, options:opts });
+  }
+}
+
+
+/* ════════════════════════════════════════════════
+   TAB 3 — ANALYSIS CHARTS
+   ════════════════════════════════════════════════ */
+
+let _cRadar=null, _cScatter=null, _cBar=null, _cDonut=null;
+
+const CHART_BASE = {
+  responsive:true, maintainAspectRatio:false, animation:{duration:400},
+  plugins:{
+    legend:{ labels:{ color:'#5a7a6a', font:{family:'JetBrains Mono',size:10}, boxWidth:12 } },
+    tooltip:{ backgroundColor:'#0b1117', borderColor:'#1a2e3d', borderWidth:1,
+      titleColor:'#00ff88', bodyColor:'#c8e8d8', titleFont:{family:'JetBrains Mono',size:10} },
+  },
+};
+
+/* Normalise motor readings to 0–100 health-like scores for radar */
+function toRadar(score, temp, vib, hum, speedOrFlow, isMotor2) {
+  const s = Math.round(Math.max(0, Math.min(1, (score+0.2)/0.4)) * 100);
+  const t = Math.round(Math.max(0, Math.min(1, 1-Math.max(0,temp-65)/15)) * 100);
+  const v = Math.round(Math.max(0, Math.min(1, 1-Math.max(0,vib-0.05)/0.25)) * 100);
+  const h = Math.round(Math.max(0, Math.min(1, 1-Math.max(0,hum-60)/20)) * 100);
+  const sp = isMotor2
+    ? Math.round(Math.max(0, Math.min(1, speedOrFlow/120)) * 100)
+    : Math.round(Math.max(0, Math.min(1, speedOrFlow/1500)) * 100);
+  return [s, t, v, h, sp];
+}
+
+function refreshAnalysis() {
+  const m1   = _statusData.motor1 || {};
+  const m2   = _statusData.motor2 || {};
+  const h1   = _histData.motor1   || [];
+  const h2   = _histData.motor2   || [];
+
+  /* ── Radar ── */
+  const rv1 = toRadar(m1.anomaly_score??0, m1.temperature_C??65, m1.vibration_x_g??0.05, m1.humidity_pct??50, m1.speed_rpm??1480, false);
+  const rv2 = toRadar(m2.anomaly_score??0, m2.temperature_C??65, m2.vibration_x_g??0.05, m2.humidity_pct??50, m2.flow_rate_Lm??100, true);
+  const radarData = {
+    labels:['Score','Temp','Vibration','Humidity','Speed/Flow'],
+    datasets:[
+      { label:'Motor 01', data:rv1, borderColor:'#00ff88', backgroundColor:'rgba(0,255,136,0.07)', pointBackgroundColor:'#00ff88', borderWidth:1.5 },
+      { label:'Motor 02', data:rv2, borderColor:'#00bfff', backgroundColor:'rgba(0,191,255,0.07)', pointBackgroundColor:'#00bfff', borderWidth:1.5 },
+    ]
+  };
+  const radarOpts = { ...CHART_BASE, scales:{ r:{ min:0, max:100,
+    ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:8},stepSize:25,backdropColor:'transparent'},
+    grid:{color:'#1a2e3d'}, pointLabels:{color:'#5a7a6a',font:{family:'JetBrains Mono',size:9}},
+    angleLines:{color:'#1a2e3d'} } } };
+  if (_cRadar) { _cRadar.data=radarData; _cRadar.update(); }
+  else _cRadar = new Chart(document.getElementById('chart-radar'),{type:'radar',data:radarData,options:radarOpts});
+
+  /* ── Scatter: Temp vs Vibration ── */
+  const sColor = s => s==='CRITICAL'?'#ff3b3bbb':s==='WARNING'?'#ffb300bb':'#00ff88bb';
+  const mkPts  = hist => hist.map(h => ({x:h.temperature_C, y:h.vibration_x_g, bg:sColor(h.anomaly_status)}));
+  const pts1 = mkPts(h1), pts2 = mkPts(h2);
+  const scatterData = {
+    datasets:[
+      { label:'Motor 01', data:pts1.map(p=>({x:p.x,y:p.y})), backgroundColor:pts1.map(p=>p.bg), pointRadius:4, borderWidth:0 },
+      { label:'Motor 02', data:pts2.map(p=>({x:p.x,y:p.y})), backgroundColor:pts2.map(p=>p.bg), pointRadius:3, borderWidth:0, pointStyle:'triangle' },
+    ]
+  };
+  const scatterOpts = { ...CHART_BASE,
+    scales:{
+      x:{ title:{display:true,text:'Temperature (°C)',color:'#5a7a6a',font:{family:'JetBrains Mono',size:9}},
+          ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9}}, grid:{color:'#0d1e29'} },
+      y:{ title:{display:true,text:'Vibration X (g)',color:'#5a7a6a',font:{family:'JetBrains Mono',size:9}},
+          ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9}}, grid:{color:'#0d1e29'} },
+    }
+  };
+  if (_cScatter) { _cScatter.data=scatterData; _cScatter.update(); }
+  else _cScatter = new Chart(document.getElementById('chart-scatter'),{type:'scatter',data:scatterData,options:scatterOpts});
+
+  /* ── Bar: Fault Frequency ── */
+  const FTYPES = ['NORMAL','BEARING FAULT','STATOR FAULT','ROTOR BAR FAULT'];
+  const fm1={},fm2={};
+  FTYPES.forEach(f=>{fm1[f]=0;fm2[f]=0;});
+  _allAlerts.forEach(a=>{
+    const k=(a.fault_name||'NORMAL').replace(/_/g,' ');
+    if(a.motor==='motor1'&&fm1[k]!=null)fm1[k]++;
+    if(a.motor==='motor2'&&fm2[k]!=null)fm2[k]++;
+  });
+  const barData = {
+    labels:FTYPES,
+    datasets:[
+      { label:'Motor 01', data:FTYPES.map(f=>fm1[f]), backgroundColor:'rgba(0,255,136,0.45)', borderColor:'#00ff88', borderWidth:1 },
+      { label:'Motor 02', data:FTYPES.map(f=>fm2[f]), backgroundColor:'rgba(0,191,255,0.45)', borderColor:'#00bfff', borderWidth:1 },
+    ]
+  };
+  const barOpts = { ...CHART_BASE, scales:{
+    x:{ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9}},grid:{color:'#0d1e29'}},
+    y:{beginAtZero:true,ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9},stepSize:1},grid:{color:'#0d1e29'}},
+  }};
+  if (_cBar) { _cBar.data=barData; _cBar.update(); }
+  else _cBar = new Chart(document.getElementById('chart-bar'),{type:'bar',data:barData,options:barOpts});
+
+  /* ── Donut: Severity Distribution ── */
+  const sev={NORMAL:0,WARNING:0,CRITICAL:0};
+  _allAlerts.forEach(a=>{if(sev[a.status]!=null)sev[a.status]++;});
+  [...h1,...h2].forEach(h=>{if(h.anomaly_status==='NORMAL')sev.NORMAL++;});
+  const donutData = {
+    labels:['NORMAL','WARNING','CRITICAL'],
+    datasets:[{
+      data:[sev.NORMAL,sev.WARNING,sev.CRITICAL],
+      backgroundColor:['rgba(0,194,102,0.55)','rgba(255,179,0,0.55)','rgba(255,59,59,0.55)'],
+      borderColor:['#00c266','#ffb300','#ff3b3b'], borderWidth:1,
+    }]
+  };
+  const donutOpts = { ...CHART_BASE, cutout:'65%',
+    plugins:{ ...CHART_BASE.plugins,
+      legend:{ position:'bottom', labels:{ color:'#5a7a6a', font:{family:'JetBrains Mono',size:10}, padding:16 } } }
+  };
+  if (_cDonut) { _cDonut.data=donutData; _cDonut.update(); }
+  else _cDonut = new Chart(document.getElementById('chart-donut'),{type:'doughnut',data:donutData,options:donutOpts});
+}
+
+
+/* ════════════════════════════════════════════════
+   MAIN POLL LOOP
+   ════════════════════════════════════════════════
+   VIVA NOTE: Three endpoints polled in parallel with Promise.all to
+   minimise round-trip latency. Any single failure caught gracefully. */
+async function poll() {
+  _cdStart = Date.now();
+  try {
+    const [sr, hr, ar] = await Promise.all([
+      fetch(`${API_BASE}/api/status`),
+      fetch(`${API_BASE}/api/history`),
+      fetch(`${API_BASE}/api/alerts`),
+    ]);
+    const sd = await sr.json();
+    const hd = await hr.json();
+    const ad = await ar.json();
+
+    setGateway(true); setTimestamp();
+
+    _statusData.motor1 = sd.motor1 || {};
+    _statusData.motor2 = sd.motor2 || {};
+    _histData.motor1   = hd.motor1 || [];
+    _histData.motor2   = hd.motor2 || [];
+
+    if (sd.motor1) updateMotorCard(1, sd.motor1);
+    if (sd.motor2) updateMotorCard(2, sd.motor2);
+
+    const alerts = ad.alerts || (Array.isArray(ad) ? ad : []);
+    renderAlerts(alerts);
+
+    const activeId = document.querySelector('.tab-pane.active')?.id;
+    if (activeId === 'tab-trends')   refreshTrendsChart();
+    if (activeId === 'tab-analysis') refreshAnalysis();
+
+    processNewAlerts(alerts);
+
+  } catch(e) {
+    setGateway(false);
+    console.warn('[Dashboard] Gateway unreachable:', e.message);
+  }
+}
+
+poll();
+setInterval(poll, POLL_INTERVAL);
+
+
+/* ════════════════════════════════════════════════
+   FEATURE: BROWSER NOTIFICATIONS
+   ════════════════════════════════════════════════
+   VIVA NOTE: Web Notifications API. Fired for WARNING+CRITICAL events.
+   Deduplication via _notifiedSet (timestamp+motor key) prevents repeated
+   notifications for the same event across poll cycles. CRITICAL alerts
+   set requireInteraction=true so they stay until dismissed.             */
+let _notifOn  = false;
+const _notSet = new Set();
+
+function toggleNotifications() {
+  if (!_notifOn) {
+    if (Notification.permission === 'granted')       { _doEnableNotif(); }
+    else if (Notification.permission === 'denied')   { showToast('warn','Notifications blocked — enable in browser site settings.'); }
+    else Notification.requestPermission().then(p => { if(p==='granted')_doEnableNotif(); else showToast('warn','Notification permission denied.'); });
+  } else {
+    _notifOn = false;
+    const b = document.getElementById('btn-notif');
+    b.textContent = '🔔 NOTIF: OFF'; b.className = 'hdr-btn';
+  }
+}
+function _doEnableNotif() {
+  _notifOn = true;
+  const b = document.getElementById('btn-notif');
+  b.textContent = '🔔 NOTIF: ON'; b.className = 'hdr-btn on-green';
+  showToast('ok','Browser notifications enabled for WARNING + CRITICAL.');
+}
+function fireNotif(a) {
+  const key = `${a.timestamp}-${a.motor}`;
+  if (_notSet.has(key)) return; _notSet.add(key);
+  try {
+    const n = new Notification(`\u26A0 ${a.status} \u2014 ${(a.motor||'').replace('motor','Motor ')}`, {
+      body:`Fault: ${(a.fault_name||'').replace(/_/g,' ')} | Score: ${Number(a.anomaly_score).toFixed(4)} | Temp: ${Number(a.temperature_C).toFixed(1)}\u00B0C`,
+      tag: key, requireInteraction: a.status==='CRITICAL',
+    });
+    if (a.status==='WARNING') setTimeout(()=>n.close(),8000);
+  } catch(e){console.warn('[Notif]',e);}
+}
+
+
+/* ════════════════════════════════════════════════
+   FEATURE: SOUND ALERTS (Web Audio API)
+   ════════════════════════════════════════════════
+   VIVA NOTE: Synthesised tones — no audio files needed, works from
+   file:// URL with no internet access. ADSR envelope prevents clicks.
+   CRITICAL: 3x rapid 880 Hz (urgent). WARNING: 1x 440 Hz (notice).   */
+let _soundOn  = false;
+let _audioCtx = null;
+const _bpSet  = new Set();
+
+function toggleSound() {
+  _soundOn = !_soundOn;
+  const b = document.getElementById('btn-sound');
+  if (_soundOn) {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    b.textContent = '🔊 SOUND: ON'; b.className = 'hdr-btn on-amber';
+    _beep(440, 0.1, 0.18);
+  } else {
+    b.textContent = '🔇 SOUND: OFF'; b.className = 'hdr-btn';
+  }
+}
+function _beep(freq, gain, dur) {
+  if (!_audioCtx) return;
+  const o=_audioCtx.createOscillator(), g=_audioCtx.createGain();
+  o.connect(g); g.connect(_audioCtx.destination);
+  o.type='sine'; o.frequency.setValueAtTime(freq,_audioCtx.currentTime);
+  g.gain.setValueAtTime(0,_audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(gain,_audioCtx.currentTime+0.01);
+  g.gain.setValueAtTime(gain,_audioCtx.currentTime+dur-0.06);
+  g.gain.linearRampToValueAtTime(0,_audioCtx.currentTime+dur);
+  o.start(_audioCtx.currentTime); o.stop(_audioCtx.currentTime+dur);
+}
+function fireSound(a) {
+  if (!_soundOn||!_audioCtx) return;
+  const key=`${a.timestamp}-${a.motor}`;
+  if (_bpSet.has(key)) return; _bpSet.add(key);
+  if (a.status==='CRITICAL') { _beep(880,0.4,0.15); setTimeout(()=>_beep(880,0.4,0.15),200); setTimeout(()=>_beep(880,0.4,0.15),400); }
+  else if (a.status==='WARNING') { _beep(440,0.25,0.22); }
+}
+
+
+/* ════════════════════════════════════════════════
+   FEATURE: TOAST NOTIFICATIONS
+   ════════════════════════════════════════════════ */
+function showToast(level, msg) {
+  const t = document.createElement('div');
+  t.className = `toast ${level}`; t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  requestAnimationFrame(()=>{ t.style.opacity='1'; });
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); },4000);
+}
+
+
+/* ════════════════════════════════════════════════
+   FEATURE: CSV DOWNLOAD
+   ════════════════════════════════════════════════
+   VIVA NOTE: Client-side CSV generation via Blob + createObjectURL.
+   Works entirely in the browser — no server round-trip needed, so it
+   functions even when the gateway is offline or restarting.           */
+function downloadCSV() {
+  if (!_allAlerts.length) { showToast('warn','No alerts to export yet.'); return; }
+  const hdr  = ['Timestamp','Motor','Fault','Status','Anomaly Score','Temp (C)','Vib X (g)'];
+  const rows = _allAlerts.map(a=>[
+    a.timestamp||'',
+    (a.motor||'').replace('motor','Motor '),
+    (a.fault_name||'').replace(/_/g,' '),
+    a.status||'',
+    a.anomaly_score!=null?Number(a.anomaly_score).toFixed(6):'',
+    a.temperature_C!=null?Number(a.temperature_C).toFixed(2):'',
+    a.vibration_x_g!=null?Number(a.vibration_x_g).toFixed(4):'',
+  ]);
+  const csv  = [hdr,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const ts   = new Date().toISOString().replace(/[-:]/g,'').replace('T','_').slice(0,15);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`motor_alerts_${ts}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('ok',`Downloaded ${_allAlerts.length} alert rows as CSV.`);
+}
+
+
+/* ════════════════════════════════════════════════
+   FEATURE: EMAIL ALERTS
+   ════════════════════════════════════════════════
+   VIVA NOTE: Dashboard sends alert payload to /api/email_alert (POST).
+   Actual SMTP delivery handled server-side in ml_gateway.py via smtplib.
+   Browser never touches SMTP credentials — credentials stay on RPi.    */
+let _emailCfg = null;
+const _emSet  = new Set();
+
+function openEmailModal()  { document.getElementById('email-modal').classList.add('open'); }
+function closeEmailModal() { document.getElementById('email-modal').classList.remove('open'); }
+
+function saveEmailConfig() {
+  const email = document.getElementById('email-input').value.trim();
+  const level = document.getElementById('email-level').value;
+  if (!email||!email.includes('@')) { showToast('warn','Enter a valid email address.'); return; }
+  _emailCfg = { email, level };
+  closeEmailModal();
+  const b = document.getElementById('btn-email');
+  b.textContent = `\uD83D\uDCE7 Email: ${email.split('@')[0].toUpperCase()}`;
+  b.className = 'hdr-btn on-green';
+  showToast('ok',`Email alerts \u2192 ${email} (${level})`);
+}
+
+async function fireEmail(a) {
+  if (!_emailCfg) return;
+  const send = _emailCfg.level==='WARNING' || (_emailCfg.level==='CRITICAL'&&a.status==='CRITICAL');
+  if (!send) return;
+  const key = `${a.timestamp}-${a.motor}`;
+  if (_emSet.has(key)) return; _emSet.add(key);
+  try {
+    const r = await fetch(`${API_BASE}/api/email_alert`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...a,recipient:_emailCfg.email}),
+    });
+    showToast(r.ok?'ok':'warn', r.ok?`Email sent \u2192 ${_emailCfg.email}`:`Email failed (${r.status}) — check gateway SMTP config`);
+  } catch(e) { showToast('warn','Email: /api/email_alert unreachable.'); }
+}
+
+
+/* ── Wire all alert features together ── */
+function processNewAlerts(alerts) {
+  for (const a of alerts) {
+    if (a.status==='CRITICAL'||a.status==='WARNING') {
+      if (_notifOn) fireNotif(a);
+      fireSound(a);
+      fireEmail(a);
+    }
+  }
+}
+
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════════════
+  RESEARCH PAPER TALKING POINTS
+
+  1. TAB ARCHITECTURE
+     Four tabs separate operator concerns: real-time overview (shift
+     operator), per-channel trends (maintenance engineer), statistical
+     analysis (process engineer), alert audit log (safety officer).
+     Pure CSS/JS tab switching — no routing library, single HTML file,
+     works from USB stick or file:// URL.
+
+  2. HEALTH SCORE
+     Weighted client-side formula: anomaly_score 50%, temperature
+     deviation 25%, vibration level 25%. Colour thresholds green≥70%,
+     amber≥40%, red<40% match standard industrial traffic-light schemes.
+     No additional API endpoint — computed from /api/status data.
+
+  3. PREDICTIVE MAINTENANCE ESTIMATE
+     Threshold-based time-at-risk counter. Does not claim specific
+     Remaining Useful Life (RUL) days — no historical degradation curve
+     available. Honest, auditable, and useful for scheduling decisions.
+
+  4. SENSOR TRENDS (TAB 2)
+     Five independent channel views each with a standards-based threshold
+     line: ISO 60034-1 for temperature, ISO 10816-3 for vibration,
+     Isolation Forest decision boundary for anomaly score.
+
+  5. ANALYSIS CHARTS (TAB 3)
+     Radar: multi-sensor health balance at a glance.
+     Scatter: temperature-vibration correlation — clustered CRITICAL
+       points reveal combined thermal+mechanical fault signatures.
+     Bar: fault frequency identifies recurring fault modes for RCA.
+     Donut: severity proportion — a high NORMAL fraction confirms the
+       Isolation Forest contamination=0.05 setting is appropriate.
+
+  6. NOTIFICATIONS & SOUND
+     Web Notifications API + Web Audio API — zero server dependency,
+     works from file:// with no internet. ADSR beep envelope avoids
+     harsh clicks in a control-room acoustic environment.
+
+  7. CSV DOWNLOAD
+     Client-side Blob export — functions even when gateway is offline.
+     RFC 4180 CSV compatible with Excel, LibreOffice, pandas.
+═══════════════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
