@@ -486,6 +486,7 @@ table.alert-table tr.row-normal   td { border-left:2px solid transparent; }
       <button class="seg-btn" id="ch-speed" onclick="setTrendCh('speed_rpm',this)">Speed / Flow</button>
       <button class="seg-btn" onclick="setTrendCh('humidity_pct',this)">Humidity</button>
       <button class="seg-btn" onclick="setTrendCh('anomaly_score',this)">Anomaly Score</button>
+      <button class="seg-btn" onclick="setTrendCh('current_3phase',this)">Current (3-Phase)</button>
     </div>
   </div>
   <div class="panel">
@@ -869,12 +870,13 @@ let _trendChart = null;
 
 /* Channel config: label, colour, threshold value, threshold description */
 const CH_CFG = {
-  temperature_C: { label:'Temperature (°C)',  color:'#ff6b35', thresh:80,    threshDesc:'80°C — ISO 60034-1 Class F winding limit' },
-  vibration_x_g: { label:'Vibration X (g)',   color:'#00bfff', thresh:0.3,   threshDesc:'0.3g — ISO 10816-3 Zone D (damage risk)' },
-  speed_rpm:     { label:'Speed (RPM)',        color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
-  flow_rate_Lm:  { label:'Flow Rate (L/min)',  color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
-  humidity_pct:  { label:'Humidity (%)',       color:'#b060ff', thresh:80,    threshDesc:'80% — upper indoor comfort/electronics limit' },
-  anomaly_score: { label:'Anomaly Score',      color:'#ffb300', thresh:-0.10, threshDesc:'-0.10 — CRITICAL boundary (Isolation Forest)' },
+  temperature_C:  { label:'Temperature (°C)',   color:'#ff6b35', thresh:80,    threshDesc:'80°C — ISO 60034-1 Class F winding limit' },
+  vibration_x_g:  { label:'Vibration X (g)',    color:'#00bfff', thresh:0.3,   threshDesc:'0.3g — ISO 10816-3 Zone D (damage risk)' },
+  speed_rpm:      { label:'Speed (RPM)',         color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
+  flow_rate_Lm:   { label:'Flow Rate (L/min)',   color:'#00ff88', thresh:null,  threshDesc:'No fixed threshold — monitor for deviation' },
+  humidity_pct:   { label:'Humidity (%)',        color:'#b060ff', thresh:80,    threshDesc:'80% — upper indoor comfort/electronics limit' },
+  anomaly_score:  { label:'Anomaly Score',       color:'#ffb300', thresh:-0.10, threshDesc:'-0.10 — CRITICAL boundary (Isolation Forest)' },
+  current_3phase: { label:'Current (A)',         color:null,      thresh:null,  threshDesc:'Three-phase stator currents — phase imbalance indicates stator/rotor fault' },
 };
 
 function setTrendMotor(n, btn) {
@@ -894,13 +896,97 @@ function setTrendCh(ch, btn) {
 function refreshTrendsChart() {
   const mk   = _trendMotor === 1 ? 'motor1' : 'motor2';
   const hist = _histData[mk] || [];
-  let ch     = _trendCh;
+  const mLabel = _trendMotor === 1 ? 'Motor 01' : 'Motor 02';
+  const labels = hist.map((_, i) => i + 1);
+
+  /* ── Special case: three-phase current overlay ──────────────────────────────
+     Renders Phase-A, Phase-B, Phase-C as three separate lines on one chart.
+     This makes phase imbalance immediately visible:
+       stator_fault    → Phase-A diverges due to 3rd harmonic + DC offset
+       rotor_bar_fault → all three phases show symmetric sideband ripple
+       bearing_fault   → all three phases remain balanced (useful negative case)
+       normal          → three balanced sinusoidal lines, near-equal amplitude
+     VIVA NOTE: Three-phase balance is a classical motor health indicator.
+     Phase Current Unbalance Ratio (PCUR) can be derived from these three
+     channels: PCUR = max_deviation / average × 100%.  A PCUR above 5%
+     indicates an unbalanced supply or developing stator fault.             */
+  if (_trendCh === 'current_3phase') {
+    const iaVals = hist.map(h => h.current_a_A ?? null);
+    const ibVals = hist.map(h => h.current_b_A ?? null);
+    const icVals = hist.map(h => h.current_c_A ?? null);
+
+    document.getElementById('trends-title').textContent =
+      `3-Phase Stator Current (A) — ${mLabel} (last ${hist.length} samples)`;
+    document.getElementById('thresh-val').textContent =
+      'Phase imbalance > 5% PCUR indicates stator fault (IEC 60034-26)';
+
+    const datasets = [
+      {
+        label: 'Phase A (Ia)',
+        data: iaVals,
+        borderColor: '#ff6b35',
+        backgroundColor: 'rgba(255,107,53,0.06)',
+        borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false,
+      },
+      {
+        label: 'Phase B (Ib)',
+        data: ibVals,
+        borderColor: '#00ff88',
+        backgroundColor: 'rgba(0,255,136,0.06)',
+        borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false,
+      },
+      {
+        label: 'Phase C (Ic)',
+        data: icVals,
+        borderColor: '#00bfff',
+        backgroundColor: 'rgba(0,191,255,0.06)',
+        borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false,
+      },
+    ];
+
+    const opts = {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { labels: { color: '#5a7a6a', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: {
+          mode: 'index', intersect: false,
+          backgroundColor: '#0b1117', borderColor: '#1a2e3d', borderWidth: 1,
+          titleColor: '#00ff88', bodyColor: '#c8e8d8',
+          titleFont: { family: 'JetBrains Mono', size: 10 },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(3) + ' A' : '—'}`,
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: '#3d6050', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 12 }, grid: { color: '#0d1e29' } },
+        y: {
+          ticks: { color: '#3d6050', font: { family: 'JetBrains Mono', size: 9 },
+            callback: v => v.toFixed(1) + ' A' },
+          grid: { color: '#0d1e29' },
+          title: { display: true, text: 'Current (A)', color: '#5a7a6a', font: { family: 'JetBrains Mono', size: 9 } },
+        },
+      },
+    };
+
+    if (_trendChart) {
+      _trendChart.data.labels   = labels;
+      _trendChart.data.datasets = datasets;
+      _trendChart.options       = opts;
+      _trendChart.update('none');
+    } else {
+      _trendChart = new Chart(document.getElementById('trends-chart'),
+        { type: 'line', data: { labels, datasets }, options: opts });
+    }
+    return;  // early return — skip the single-channel path below
+  }
+
+  /* ── Standard single-channel path ───────────────────────────────────────── */
+  let ch  = _trendCh;
   if (ch === 'speed_rpm' && _trendMotor === 2) ch = 'flow_rate_Lm';
 
   const cfg    = CH_CFG[ch] || CH_CFG['temperature_C'];
-  const labels = hist.map((_,i) => i+1);
   const values = hist.map(h => h[ch] ?? null);
-  const mLabel = _trendMotor===1 ? 'Motor 01' : 'Motor 02';
 
   document.getElementById('trends-title').textContent =
     `${cfg.label} — ${mLabel} (last ${hist.length} samples)`;
@@ -908,27 +994,31 @@ function refreshTrendsChart() {
 
   const datasets = [{
     label: cfg.label, data: values,
-    borderColor: cfg.color, backgroundColor: cfg.color+'1a',
+    borderColor: cfg.color, backgroundColor: cfg.color + '1a',
     borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true,
   }];
   if (cfg.thresh !== null) {
     datasets.push({
       label: 'Threshold', data: labels.map(() => cfg.thresh),
       borderColor: '#ff3b3b', borderWidth: 1,
-      borderDash: [4,4], pointRadius: 0, fill: false,
+      borderDash: [4, 4], pointRadius: 0, fill: false,
     });
   }
 
   const opts = {
-    responsive:true, maintainAspectRatio:false, animation:false,
-    plugins:{
-      legend:{ labels:{ color:'#5a7a6a', font:{family:'JetBrains Mono',size:10}, boxWidth:12 } },
-      tooltip:{ mode:'index', intersect:false, backgroundColor:'#0b1117', borderColor:'#1a2e3d',
-        borderWidth:1, titleColor:'#00ff88', bodyColor:'#c8e8d8', titleFont:{family:'JetBrains Mono',size:10} },
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: {
+      legend: { labels: { color: '#5a7a6a', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 12 } },
+      tooltip: {
+        mode: 'index', intersect: false,
+        backgroundColor: '#0b1117', borderColor: '#1a2e3d', borderWidth: 1,
+        titleColor: '#00ff88', bodyColor: '#c8e8d8',
+        titleFont: { family: 'JetBrains Mono', size: 10 },
+      },
     },
-    scales:{
-      x:{ ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9},maxTicksLimit:12}, grid:{color:'#0d1e29'} },
-      y:{ ticks:{color:'#3d6050',font:{family:'JetBrains Mono',size:9}}, grid:{color:'#0d1e29'} },
+    scales: {
+      x: { ticks: { color: '#3d6050', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 12 }, grid: { color: '#0d1e29' } },
+      y: { ticks: { color: '#3d6050', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#0d1e29' } },
     },
   };
 
@@ -938,7 +1028,8 @@ function refreshTrendsChart() {
     _trendChart.options       = opts;
     _trendChart.update('none');
   } else {
-    _trendChart = new Chart(document.getElementById('trends-chart'), { type:'line', data:{labels,datasets}, options:opts });
+    _trendChart = new Chart(document.getElementById('trends-chart'),
+      { type: 'line', data: { labels, datasets }, options: opts });
   }
 }
 
