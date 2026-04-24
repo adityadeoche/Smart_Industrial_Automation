@@ -97,17 +97,20 @@ The system detects four operating conditions:
 ## 📂 File Structure
 
 ```
-smart-industrial-automation/
+Smart_Industrial_Automation/
 │
-├── sensor_simulator.py   # Motor sensor data generator (4 fault scenarios × 2 motors)
-├── can_node.py           # ESP32 CAN FD transmitter node simulator
-├── ml_gateway.py         # Raspberry Pi gateway: CAN listener + ML + Flask REST API
-├── dashboard.html        # Live browser monitoring dashboard (Chart.js, no build step)
-├── run_demo.py           # Integration demo orchestrator (single-terminal, no hardware)
-├── demo_report.py        # Evidence report generator (HTML with Chart.js charts)
+├── Documentations/               # Project documentation files
+├── Project/                      # Core project source files
+|    ├── sensor_simulator.py   # Motor sensor data generator (4 fault scenarios × 2 motors)
+|    ├── can_node.py           # ESP32 CAN FD transmitter node simulator
+|    ├── ml_gateway.py         # Raspberry Pi gateway: CAN listener + ML + Flask REST API
+|    ├── dashboard.html        # Live browser monitoring dashboard (Chart.js, no build step)
+|    ├── run_demo.py           # Integration demo orchestrator (single-terminal, no hardware)
+|    ├── demo_report.py        # Evidence report generator (HTML with Chart.js charts)
+|    ├── requirements.txt      # Pinned Python dependencies
 │
-├── requirements.txt      # Pinned Python dependencies
 ├── .gitignore
+├── LICENSE
 ├── CONTRIBUTING.md
 └── README.md
 ```
