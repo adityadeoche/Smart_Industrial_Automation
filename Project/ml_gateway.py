@@ -607,8 +607,8 @@ def _send_smtp(recipient: str, alert: dict) -> tuple[bool, str]:
     """
     smtp_host = os.environ.get("SMTP_HOST", "")
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER", "umesh.marvellous@gmail.com")
-    smtp_pass = os.environ.get("SMTP_PASS", "wmaj ehoa fvbr magx")
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
     smtp_from = os.environ.get("SMTP_FROM", smtp_user)
 
     if not smtp_host or not smtp_user or not smtp_pass:
