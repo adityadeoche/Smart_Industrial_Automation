@@ -68,9 +68,9 @@ except ImportError as exc:
 # ─────────────────────────────────────────────────────────────────────────────
 
 FAULT_ID_MAP: Dict[str, int] = {
-    "normal"        : 0,
-    "bearing_fault" : 1,
-    "stator_fault"  : 2,
+    "normal"         : 0,
+    "bearing_fault"  : 1,
+    "stator_fault"   : 2,
     "rotor_bar_fault": 3,
 }
 
@@ -122,17 +122,18 @@ def _print_banner(index: int, total: int, scenario: str,
 
 def _print_frame_line(ts: str, motor_label: str,
                       temp: float, vib: float, variable: float,
+                      ia: float,
                       score: float, status: str, fault_name: str,
                       is_motor2: bool) -> None:
-    icon = {"NORMAL": "✓", "WARNING": "⚠", "CRITICAL": "✗"}.get(status, "?")
+    icon      = {"NORMAL": "✓", "WARNING": "⚠", "CRITICAL": "✗"}.get(status, "?")
     var_label = "flow" if is_motor2 else "rpm "
     var_unit  = "L/m" if is_motor2 else "   "
-    # Score sign formatting
     score_str = f"{score:+.4f}"
     print(
         f"  [{ts}] {motor_label} | "
         f"temp={temp:6.2f}°C  vib={vib:.4f}g  "
         f"{var_label}={variable:7.1f}{var_unit}  "
+        f"Ia={ia:6.2f}A  "
         f"score={score_str}  [{icon} {status:<8}]  "
         f"fault={fault_name}"
     )
@@ -164,8 +165,8 @@ def _print_summary(stats: List[Dict]) -> None:
     print("  ║ Scenario     ║ Frames Sent  ║ Avg Score ║ Peak Status        ║")
     print("  ╠══════════════╬══════════════╬═══════════╬════════════════════╣")
     for s in stats:
-        avg  = s["avg_score"]
-        sign = "+" if avg >= 0 else "−"
+        avg     = s["avg_score"]
+        sign    = "+" if avg >= 0 else "−"
         avg_str = f"{sign}{abs(avg):.4f}"
         print(
             f"  ║ {s['scenario']:<12} ║ {s['frames']:>12} ║ {avg_str:>9} "
@@ -196,10 +197,10 @@ def _start_flask() -> threading.Thread:
     """
     flask_thread = threading.Thread(
         target=lambda: app.run(
-            host        = "0.0.0.0",
-            port        = 5000,
-            debug       = False,
-            use_reloader= False,   # CRITICAL: reloader spawns a second process
+            host         = "0.0.0.0",
+            port         = 5000,
+            debug        = False,
+            use_reloader = False,   # CRITICAL: reloader spawns a second process
         ),
         daemon = True,
         name   = "FlaskServer",
@@ -213,10 +214,10 @@ def _start_flask() -> threading.Thread:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_demo(
-    scenarios : List[str],
-    dwell     : float,
-    interval  : float,
-    no_browser: bool,
+    scenarios  : List[str],
+    dwell      : float,
+    interval   : float,
+    no_browser : bool,
 ) -> None:
     """
     Main orchestration loop.
@@ -266,7 +267,7 @@ def run_demo(
     # ── Step 3: Scenario sequencer ───────────────────────────────────────────
     print("[DEMO] Step 3/3 — Running fault scenario sequence …")
 
-    summary_stats: List[Dict] = []
+    summary_stats : List[Dict] = []
     total = len(scenarios)
 
     for sc_idx, scenario in enumerate(scenarios, start=1):
@@ -275,10 +276,13 @@ def run_demo(
 
         _print_banner(sc_idx, total, scenario, dwell, interval)
 
-        # Generate full sensor DataFrame for this scenario
-        # duration_s=10, fs=1000 → 10,000 rows; we cycle through them
-        df = generate_scenario(scenario, duration_s=10, fs=1000, seed=42)
-        n_rows      = len(df)
+        # Generate full sensor DataFrame for this scenario.
+        # duration_s=10, fs=1000 → 10,000 rows; we cycle through them.
+        # sensor_simulator produces: temperature_C, vibration_x_g, speed_rpm,
+        # current_a_A, current_b_A, current_c_A (and others).
+        df     = generate_scenario(scenario, duration_s=10, fs=1000, seed=42)
+        n_rows = len(df)
+
         frames_sent = 0
         scores_m1   : List[float] = []
         scores_m2   : List[float] = []
@@ -286,49 +290,65 @@ def run_demo(
         STATUS_RANK = {"NORMAL": 0, "WARNING": 1, "CRITICAL": 2, "INITIALISING": -1}
 
         deadline = time.monotonic() + dwell
+        row_idx  = 0
 
-        row_idx = 0
         while time.monotonic() < deadline:
             row = df.iloc[row_idx % n_rows]
-
-            ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            ts  = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
             # ── Motor 1 readings ──────────────────────────────────────────
             temp_m1  = float(row["temperature_C"])
             vib_m1   = float(row["vibration_x_g"])
             speed_m1 = float(row["speed_rpm"])
 
-            # Secondary (ambient) — simulated as temp−40 + humidity 55%
+            # Three-phase stator currents — read directly from simulator.
+            # Fault signatures visible in current channels:
+            #   stator_fault    → phase-A imbalance + 3rd/5th harmonics
+            #   rotor_bar_fault → sidebands in all three phases
+            #   bearing_fault   → balanced (useful negative indicator)
+            #   normal          → balanced sinusoids, near-equal amplitude
+            ia_m1 = float(row["current_a_A"])
+            ib_m1 = float(row["current_b_A"])
+            ic_m1 = float(row["current_c_A"])
+
+            # Secondary (ambient) — derived; no separate CAN frame in demo
             amb_m1 = temp_m1 - 40.0
             hum_m1 = 55.0 + (fault_id * 2.0)   # slight humidity rise with faults
 
             _handle_primary(
                 "motor1", "history1", detector1,
-                temp_m1, vib_m1, speed_m1, fault_id, ts, is_motor2=False
+                temp_m1, vib_m1, speed_m1,
+                ia_m1, ib_m1, ic_m1,
+                fault_id, ts, is_motor2=False,
             )
             _handle_secondary_state("motor1", amb_m1, hum_m1)
 
-            # Capture score for summary
+            # Capture score + status for summary
             with _lock:
-                sc_m1  = state["motor1"].get("anomaly_score", 0.0) or 0.0
-                st_m1  = state["motor1"].get("anomaly_status", "NORMAL")
+                sc_m1 = state["motor1"].get("anomaly_score", 0.0) or 0.0
+                st_m1 = state["motor1"].get("anomaly_status", "NORMAL")
             scores_m1.append(sc_m1)
             if STATUS_RANK.get(st_m1, 0) > STATUS_RANK.get(peak_status, 0):
                 peak_status = st_m1
 
-            # ── Motor 2 readings (pump — can_node.py scaling applied) ─────
+            # ── Motor 2 readings (pump — mirrors can_node.py scaling) ─────
             # Motor 2 runs cooler (×0.97), slightly rougher vib (×1.05),
-            # speed → flow rate (÷14.8 L/min per RPM)
-            temp_m2  = temp_m1  * 0.97
-            vib_m2   = abs(vib_m1) * 1.05
-            flow_m2  = speed_m1 / 14.8
+            # speed → flow rate (÷14.8 L/min per RPM), current scaled ×0.97
+            temp_m2  = temp_m1      * 0.97
+            vib_m2   = abs(vib_m1)  * 1.05
+            flow_m2  = speed_m1     / 14.8
+            ia_m2    = ia_m1        * 0.97
+            ib_m2    = ib_m1        * 0.97
+            ic_m2    = ic_m1        * 0.97
 
             amb_m2 = temp_m2 - 40.0
             hum_m2 = 57.0 + (fault_id * 1.5)
 
             _handle_primary(
                 "motor2", "history2", detector2,
-                temp_m2, vib_m2, flow_m2, fault_id, ts, is_motor2=True
+                temp_m2, vib_m2, flow_m2,
+                ia_m2, ib_m2, ic_m2,
+                fault_id, ts, is_motor2=True,
             )
             _handle_secondary_state("motor2", amb_m2, hum_m2)
 
@@ -337,9 +357,12 @@ def run_demo(
 
             scores_m2.append(sc_m2)
 
-            # ── Console output ────────────────────────────────────────────
-            _print_frame_line(ts, "Motor1", temp_m1, vib_m1, speed_m1,
-                              sc_m1, st_m1, fault_name, is_motor2=False)
+            # ── Console output — one line per frame ───────────────────────
+            _print_frame_line(
+                ts, "Motor1",
+                temp_m1, vib_m1, speed_m1, ia_m1,
+                sc_m1, st_m1, fault_name, is_motor2=False,
+            )
 
             frames_sent += 1
             row_idx     += 1
@@ -435,6 +458,19 @@ def main() -> None:
         print("\n[DEMO] Shutting down cleanly.")
         sys.exit(0)
 
-# python run_demo.py --dwell 30 --interval 0.5
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage examples
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Full demo (30s per scenario, ~2 min total):
+#   python run_demo.py --dwell 30 --interval 0.5
+#
+# Fast CI smoke-test:
+#   python run_demo.py --dwell 5 --interval 0.1
+#
+# Slow examiner demo, specific scenarios only:
+#   python run_demo.py --dwell 60 --scenarios "normal,bearing_fault"
+
 if __name__ == "__main__":
     main()
